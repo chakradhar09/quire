@@ -60,10 +60,16 @@ function Good-Python($v) { $v = Version "$v"; return $v -and $v -ge [version]"3.
 function Find-Missing {
   $found = @()
   if (-not (Get-Command git -ErrorAction SilentlyContinue)) { $found += "Git.Git" }
+  # winget's Node.js goes to Program Files; take it even when this window's PATH doesn't have it yet.
+  if (-not (Get-Command node -ErrorAction SilentlyContinue) -and (Test-Path "$env:ProgramFiles\nodejs\node.exe")) { $env:Path = "$env:ProgramFiles\nodejs;$env:Path" }
   $node = Get-Command node -ErrorAction SilentlyContinue
   if (-not $node -or (Version (node --version)) -lt [version]"22.13.0") { $found += "OpenJS.NodeJS.LTS" }
   $script:pyExe = $null; $script:pyArgs = @()
-  foreach ($candidate in @(@{ Exe = "py"; Args = @("-3.12") }, @{ Exe = "py"; Args = @("-3.11") }, @{ Exe = "python"; Args = @() })) {
+  # Last, the folders python.org's installer (and winget) use, in case the new Python is not on PATH.
+  $installed = foreach ($root in @("$env:LOCALAPPDATA\Programs\Python", $env:ProgramFiles)) {
+    foreach ($name in "Python312", "Python311") { @{ Exe = "$root\$name\python.exe"; Args = @() } }
+  }
+  foreach ($candidate in @(@{ Exe = "py"; Args = @("-3.12") }, @{ Exe = "py"; Args = @("-3.11") }, @{ Exe = "python"; Args = @() }) + $installed) {
     if (Get-Command $candidate.Exe -ErrorAction SilentlyContinue) {
       $v = & $candidate.Exe @($candidate.Args + "--version") 2>$null
       if ($LASTEXITCODE -eq 0 -and (Good-Python $v)) { $script:pyExe = $candidate.Exe; $script:pyArgs = $candidate.Args; break }

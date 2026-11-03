@@ -39,13 +39,13 @@ So a low score does not mean a person wrote it, and a high score does not mean t
 | **Computer** | Windows 10 or 11, macOS 12 or later, or a 64-bit Linux; 8 GB of RAM or more |
 | **Disk space** | About 2 GB (4 GB with NVIDIA GPU support) |
 | **Git** | Any recent version ([git-scm.com](https://git-scm.com/downloads)) |
-| **Node.js** | **22.13 or later** ([nodejs.org](https://nodejs.org/), the LTS version) |
-| **Python** | **3.11 or 3.12**, not 3.13 or later: one of Quire's packages (the OCR that reads text in pictures) has no build for them yet. Python 3.12 can sit beside a newer Python; the installer picks it. ([python.org](https://www.python.org/downloads/release/python-3120/)) |
+| **Node.js** | **22.13 or later**. An older Node.js can stay; the installer offers to install a newer one if you don't have it. |
+| **Python** | **3.11 or 3.12**, not 3.13 or later: one of Quire's packages (the OCR that reads text in pictures) has no build for them yet. Python 3.12 can sit beside a newer Python; the installer picks it, and offers to install it if you don't have it. |
 | **Graphics card** | Optional. An NVIDIA GPU makes the AI estimate faster; Apple silicon Macs use theirs. Without one it runs on the processor, more slowly. |
 | **Internet** | To install, for the similarity check's web searches, and to check for updates |
 | **Brave Search API key** | For the similarity check; Brave asks for a card but gives about 100 checks' worth of free credit a month. See [Getting a Brave Search API key](#getting-a-brave-search-api-key). |
 
-**The installer checks all of this for you.** If Git, Node.js or Python is missing or too old, it offers to install it, with **winget** on Windows or **Homebrew** on macOS. On Linux, or if you decline, it tells you exactly what to install, and you run it again afterwards.
+**The installer checks all of this for you.** If Git, Node.js or Python is missing or too old, it asks before installing it, with **winget** on Windows or **Homebrew** on macOS. Python and Node.js are covered everywhere: on Linux, or a Mac without Homebrew, it offers a private Python 3.12 and Node.js 22 kept inside Quire's own folder (no admin rights, nothing else on your computer changes, removed when you delete the folder). For anything else it can't install, it tells you exactly what to install, and you run it again afterwards.
 
 ## Install
 
@@ -70,7 +70,7 @@ The similarity check also needs a **Brave Search API key**, which you add once o
 - *"irm is not recognized"* or *"'irm' is not recognized as an internal or external command"*: you are in Command Prompt. Open PowerShell instead (above).
 - *"Quire still needs: ..."*: install what it lists (the line it prints shows how), open a **new** PowerShell or Terminal window so it is found, and run the installer again.
 - *"curl: command not found"* (some Linux systems): install curl with your package manager, e.g. `sudo apt install curl`.
-- *Python 3.13 or 3.14 is installed but Quire wants 3.12*: install Python 3.12 as well; both can stay, and the installer uses 3.12.
+- *Python 3.13 or 3.14 is installed but Quire wants 3.12*: say yes when the installer offers Python 3.12; both can stay, and Quire uses 3.12.
 - *It stops partway (a download failed)*: run the same line again. It picks up where it left off, and your drafts are never touched.
 - Anything else: [open an issue](https://github.com/chakradhar09/quire/issues) with the last lines the installer printed.
 

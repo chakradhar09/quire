@@ -4,6 +4,8 @@
 # starts by itself when there is something to check. `quire --stop` stops the app and the worker.
 set -euo pipefail
 APP="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0")")/.." && pwd)"
+# A Node.js the installer put beside the app comes first.
+if [ -d "$APP/../node/bin" ]; then PATH="$APP/../node/bin:$PATH"; fi
 DATA="$APP/data"; URL="http://127.0.0.1:3000"; PID_FILE="$DATA/web.pid"
 running() { [ -f "$1" ] && kill -0 "$(cat "$1")" 2>/dev/null; }
 

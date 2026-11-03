@@ -18,6 +18,8 @@ MODEL_URL="https://github.com/$REPO/releases/download/model-v5/quire-classifier-
 DIR="${QUIRE_DIR:-$HOME/.quire}"
 SOURCE="${QUIRE_SOURCE:-https://github.com/$REPO.git}"
 APP="$DIR/app"
+# A Node.js this installer put in $DIR/node (below) comes first; quire.sh and update.sh do the same.
+if [ -d "$DIR/node/bin" ]; then PATH="$DIR/node/bin:$PATH"; fi
 
 say() { printf '\033[32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33m  !\033[0m %s\n' "$*"; }
@@ -38,7 +40,8 @@ find_missing() {
   command -v git >/dev/null || missing="$missing git"
   if ! command -v node >/dev/null || ! at_least "$(node --version | tr -d v)" 22.13.0; then missing="$missing node"; fi
   PY=""
-  for candidate in python3.12 python3.11 python3 python; do
+  # The last candidates are a Python this installer put in $DIR/python (below).
+  for candidate in python3.12 python3.11 python3 python "$DIR"/python/cpython-3.12*/bin/python3.12; do
     if command -v "$candidate" >/dev/null && good_python "$candidate"; then PY="$candidate"; break; fi
   done
   [ -n "$PY" ] || missing="$missing python@3.12"
@@ -52,6 +55,40 @@ if [ -n "$missing" ] && [ "$(uname)" = Darwin ] && command -v brew >/dev/null; t
     [yY]*) brew install $missing && find_missing ;;  # unquoted on purpose: one formula per word
   esac
 fi
+if [ -z "$PY" ]; then
+  # No Homebrew, or Linux: a private Python 3.12 inside $DIR, from uv (astral.sh). No admin rights, and nothing
+  # outside $DIR changes: no shell profile edits, no system packages.
+  warn "Quire needs Python 3.11 or 3.12 (yours is missing, or 3.13 and later, which Quire can't use yet)."
+  case "$(ask "  Install a private Python 3.12 just for Quire, in $DIR? [Y/n]" y)" in
+    [yY]*)
+      mkdir -p "$DIR"
+      [ -x "$DIR/uv/uv" ] || curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$DIR/uv" sh -s -- --quiet
+      UV_PYTHON_INSTALL_DIR="$DIR/python" "$DIR/uv/uv" python install --no-bin 3.12 && find_missing ;;
+  esac
+fi
+# The same for Node.js: the official 22.x build from nodejs.org, checked against its published SHA-256, in $DIR/node.
+install_node() {
+  local os arch tmp file sum got
+  case "$(uname)" in Darwin) os=darwin ;; *) os=linux ;; esac
+  case "$(uname -m)" in x86_64|amd64) arch=x64 ;; arm64|aarch64) arch=arm64 ;; *) warn "nodejs.org has no build for $(uname -m)."; return 1 ;; esac
+  tmp="$(mktemp -d)"
+  curl -fsSL https://nodejs.org/dist/latest-v22.x/SHASUMS256.txt -o "$tmp/sums" || return 1
+  read -r sum file <<<"$(awk -v want="-$os-$arch.tar.gz" 'substr($2, length($2) - length(want) + 1) == want' "$tmp/sums")"
+  [ -n "$file" ] || { warn "nodejs.org lists no $os-$arch build."; return 1; }
+  say "Downloading $file"
+  curl -fL --progress-bar -o "$tmp/$file" "https://nodejs.org/dist/latest-v22.x/$file" || return 1
+  if command -v sha256sum >/dev/null; then got="$(sha256sum "$tmp/$file")"; else got="$(shasum -a 256 "$tmp/$file")"; fi
+  [ "${got%% *}" = "$sum" ] || { warn "The download doesn't match its published checksum; not installing it."; rm -rf "$tmp"; return 1; }
+  rm -rf "$DIR/node" && mkdir -p "$DIR/node" && tar -xzf "$tmp/$file" -C "$DIR/node" --strip-components 1 || return 1
+  rm -rf "$tmp"
+  PATH="$DIR/node/bin:$PATH"
+}
+case "$missing" in *node*)
+  warn "Quire needs Node.js 22.13 or later (yours is missing or older)."
+  case "$(ask "  Install a private Node.js 22 just for Quire, in $DIR? [Y/n]" y)" in
+    [yY]*) mkdir -p "$DIR" && install_node && find_missing ;;
+  esac ;;
+esac
 if [ -n "$missing" ]; then
   warn "Quire still needs:$missing (Node.js 22.13 or later, Python 3.11 or 3.12)."
   if [ "$(uname)" = Darwin ]; then warn "Install Homebrew from brew.sh, then: brew install$missing"

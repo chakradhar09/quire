@@ -4,6 +4,8 @@
 # rebuilds, and starts Quire again if it was running. --quiet prints only what changed (used by the launcher).
 set -euo pipefail
 APP="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0")")/.." && pwd)"
+# A Node.js the installer put beside the app comes first.
+if [ -d "$APP/../node/bin" ]; then PATH="$APP/../node/bin:$PATH"; fi
 QUIET=0; FORCE=0
 for a in "$@"; do case "$a" in --quiet) QUIET=1 ;; --force) FORCE=1 ;; esac; done
 
