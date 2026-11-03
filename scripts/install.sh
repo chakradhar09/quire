@@ -197,6 +197,8 @@ pip_install -r "$APP/worker/requirements.txt"
 
 say "Building the app"
 (cd "$APP/web" && npm ci --no-audit --no-fund --loglevel=error && npm run build)
+# The database, before the app's first start: the app only reads it (0.1.1's launcher doesn't create it).
+"$VPY" "$APP/db/migrate.py"
 
 ENV_FILE="$APP/worker/.env"
 [ -f "$ENV_FILE" ] || cp "$APP/worker/.env.example" "$ENV_FILE"

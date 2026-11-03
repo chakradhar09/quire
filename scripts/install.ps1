@@ -199,6 +199,8 @@ Pip-Install @("-r", (Join-Path $App "worker\requirements.txt"))
 Say "Building the app"
 Push-Location (Join-Path $App "web")
 try { Run npm @("ci", "--no-audit", "--no-fund", "--loglevel=error"); Run npm @("run", "build") } finally { Pop-Location }
+# The database, before the app's first start: the app only reads it (0.1.1's launcher doesn't create it).
+Run $py @((Join-Path $App "db\migrate.py"))
 
 # ---------------------------------------------------------------- Settings
 $envFile = Join-Path $App "worker\.env"

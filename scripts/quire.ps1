@@ -38,6 +38,9 @@ if ((Test-Path $settings) -and ((Get-Content $settings -Raw) -match '"autoUpdate
 
 if (-not (Running $PidFile)) {
   $log = Join-Path $Data "web.log"
+  # The database: created on the first start, and brought up to date after an update. The app only reads it,
+  # and the worker that would also do this starts only once there is work in it.
+  try { & (Join-Path $App "worker\.venv\Scripts\python.exe") (Join-Path $App "db\migrate.py") *> $null } catch { }
   $p = Start-Process -FilePath "cmd.exe" -ArgumentList "/c npm run start > `"$log`" 2>&1" `
     -WorkingDirectory (Join-Path $App "web") -WindowStyle Hidden -PassThru
   Set-Content -Path $PidFile -Value $p.Id -NoNewline

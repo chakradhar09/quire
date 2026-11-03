@@ -25,6 +25,9 @@ if ! running "$PID_FILE" && grep -qs '"autoUpdate": *true' "$DATA/settings.json"
   "$APP/scripts/update.sh" --quiet || true
 fi
 if ! running "$PID_FILE"; then
+  # The database: created on the first start, and brought up to date after an update. The app only reads it,
+  # and the worker that would also do this starts only once there is work in it.
+  "$APP/worker/.venv/bin/python" "$APP/db/migrate.py" >/dev/null 2>&1 || true
   cd "$APP/web"
   if command -v setsid >/dev/null; then setsid npm run start >"$DATA/web.log" 2>&1 &
   else npm run start >"$DATA/web.log" 2>&1 & fi
