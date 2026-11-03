@@ -1,0 +1,402 @@
+{
+ "color": {
+  "bench": "#0e1712",
+  "bg": "#15221b",
+  "surface": "#1b2b22",
+  "surface-sunken": "#0a110d",
+  "border": "#2a3d31",
+  "border-input": "#7f9886",
+  "quad": "#1b2a21",
+  "text": "#e6f0e8",
+  "text-muted": "#a2b8a9",
+  "accent": "#6fd09a",
+  "accent-hover": "#8fe0b2",
+  "on-accent": "#0c1a12",
+  "focus": "#86e0ae",
+  "rule": "#ff8f7e",
+  "shell": "#17402f",
+  "on-shell": "#eff7f0",
+  "on-shell-muted": "#a6c4b3",
+  "lamp": "#f1d36b",
+  "on-match": "#0c1a12",
+  "danger": "#e87e78",
+  "danger-surface": "#3b332c",
+  "success": "#58d088",
+  "success-surface": "#21412f",
+  "warning": "#efb339",
+  "warning-surface": "#3c3c20",
+  "info": "#7e9fe7",
+  "info-surface": "#283840",
+  "score-none-bg": "#2a3a30",
+  "score-none-text": "#87a692",
+  "score-low-bg": "#21412f",
+  "score-low-text": "#58d088",
+  "score-mid-bg": "#3c3d20",
+  "score-mid-text": "#efb739",
+  "score-high-bg": "#3c3420",
+  "score-high-text": "#ef8539",
+  "score-max-bg": "#3b322d",
+  "score-max-text": "#e87d7d",
+  "match-1-bg": "#3b2a22",
+  "match-1-solid": "#e64e42",
+  "match-2-bg": "#3c3320",
+  "match-2-solid": "#ef8139",
+  "match-3-bg": "#3c3d20",
+  "match-3-solid": "#efb939",
+  "match-4-bg": "#1f4330",
+  "match-4-solid": "#4ddb8d",
+  "match-5-bg": "#1c463e",
+  "match-5-solid": "#3ee9e0",
+  "match-6-bg": "#1b3d41",
+  "match-6-solid": "#39baef",
+  "match-7-bg": "#383725",
+  "match-7-solid": "#d69952",
+  "match-8-bg": "#28313c",
+  "match-8-solid": "#8073d4",
+  "match-9-bg": "#2e2e3c",
+  "match-9-solid": "#a167d0",
+  "match-10-bg": "#372b30",
+  "match-10-solid": "#d45490",
+  "ai-bg": "#21323f",
+  "ai-solid": "#567de1",
+  "ai-paraphrased-bg": "#2c303b",
+  "ai-paraphrased-solid": "#956fcd"
+ },
+ "pairs": [
+  [
+   "text",
+   "bg"
+  ],
+  [
+   "text",
+   "bench"
+  ],
+  [
+   "text",
+   "surface"
+  ],
+  [
+   "text",
+   "surface-sunken"
+  ],
+  [
+   "text-muted",
+   "bg"
+  ],
+  [
+   "text-muted",
+   "bench"
+  ],
+  [
+   "text-muted",
+   "surface"
+  ],
+  [
+   "text-muted",
+   "surface-sunken"
+  ],
+  [
+   "on-shell",
+   "shell"
+  ],
+  [
+   "on-shell-muted",
+   "shell"
+  ],
+  [
+   "lamp",
+   "shell",
+   "ui"
+  ],
+  [
+   "on-accent",
+   "accent"
+  ],
+  [
+   "on-accent",
+   "accent-hover"
+  ],
+  [
+   "accent",
+   "bg"
+  ],
+  [
+   "accent",
+   "bench"
+  ],
+  [
+   "accent",
+   "surface"
+  ],
+  [
+   "rule",
+   "bg"
+  ],
+  [
+   "rule",
+   "bench"
+  ],
+  [
+   "rule",
+   "surface"
+  ],
+  [
+   "on-accent",
+   "danger"
+  ],
+  [
+   "danger",
+   "bg"
+  ],
+  [
+   "danger",
+   "danger-surface"
+  ],
+  [
+   "success",
+   "bg"
+  ],
+  [
+   "success",
+   "success-surface"
+  ],
+  [
+   "warning",
+   "bg"
+  ],
+  [
+   "warning",
+   "warning-surface"
+  ],
+  [
+   "info",
+   "bg"
+  ],
+  [
+   "info",
+   "info-surface"
+  ],
+  [
+   "text",
+   "danger-surface"
+  ],
+  [
+   "text",
+   "warning-surface"
+  ],
+  [
+   "text",
+   "info-surface"
+  ],
+  [
+   "text",
+   "success-surface"
+  ],
+  [
+   "border-input",
+   "bg",
+   "ui"
+  ],
+  [
+   "border-input",
+   "surface",
+   "ui"
+  ],
+  [
+   "focus",
+   "bg",
+   "ui"
+  ],
+  [
+   "focus",
+   "bench",
+   "ui"
+  ],
+  [
+   "focus",
+   "surface",
+   "ui"
+  ],
+  [
+   "focus",
+   "surface-sunken",
+   "ui"
+  ],
+  [
+   "score-none-text",
+   "score-none-bg"
+  ],
+  [
+   "score-low-text",
+   "score-low-bg"
+  ],
+  [
+   "score-mid-text",
+   "score-mid-bg"
+  ],
+  [
+   "score-high-text",
+   "score-high-bg"
+  ],
+  [
+   "score-max-text",
+   "score-max-bg"
+  ],
+  [
+   "text",
+   "match-1-bg"
+  ],
+  [
+   "text",
+   "match-2-bg"
+  ],
+  [
+   "text",
+   "match-3-bg"
+  ],
+  [
+   "text",
+   "match-4-bg"
+  ],
+  [
+   "text",
+   "match-5-bg"
+  ],
+  [
+   "text",
+   "match-6-bg"
+  ],
+  [
+   "text",
+   "match-7-bg"
+  ],
+  [
+   "text",
+   "match-8-bg"
+  ],
+  [
+   "text",
+   "match-9-bg"
+  ],
+  [
+   "text",
+   "match-10-bg"
+  ],
+  [
+   "on-match",
+   "match-1-solid"
+  ],
+  [
+   "on-match",
+   "match-2-solid"
+  ],
+  [
+   "on-match",
+   "match-3-solid"
+  ],
+  [
+   "on-match",
+   "match-4-solid"
+  ],
+  [
+   "on-match",
+   "match-5-solid"
+  ],
+  [
+   "on-match",
+   "match-6-solid"
+  ],
+  [
+   "on-match",
+   "match-7-solid"
+  ],
+  [
+   "on-match",
+   "match-8-solid"
+  ],
+  [
+   "on-match",
+   "match-9-solid"
+  ],
+  [
+   "on-match",
+   "match-10-solid"
+  ],
+  [
+   "match-1-solid",
+   "match-1-bg",
+   "ui"
+  ],
+  [
+   "match-2-solid",
+   "match-2-bg",
+   "ui"
+  ],
+  [
+   "match-3-solid",
+   "match-3-bg",
+   "ui"
+  ],
+  [
+   "match-4-solid",
+   "match-4-bg",
+   "ui"
+  ],
+  [
+   "match-5-solid",
+   "match-5-bg",
+   "ui"
+  ],
+  [
+   "match-6-solid",
+   "match-6-bg",
+   "ui"
+  ],
+  [
+   "match-7-solid",
+   "match-7-bg",
+   "ui"
+  ],
+  [
+   "match-8-solid",
+   "match-8-bg",
+   "ui"
+  ],
+  [
+   "match-9-solid",
+   "match-9-bg",
+   "ui"
+  ],
+  [
+   "match-10-solid",
+   "match-10-bg",
+   "ui"
+  ],
+  [
+   "text",
+   "ai-bg"
+  ],
+  [
+   "text",
+   "ai-paraphrased-bg"
+  ],
+  [
+   "on-match",
+   "ai-solid"
+  ],
+  [
+   "on-match",
+   "ai-paraphrased-solid"
+  ],
+  [
+   "ai-solid",
+   "ai-bg",
+   "ui"
+  ],
+  [
+   "ai-paraphrased-solid",
+   "ai-paraphrased-bg",
+   "ui"
+  ]
+ ]
+}

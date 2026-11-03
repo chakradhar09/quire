@@ -1,0 +1,201 @@
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./theme.css";
+
+/* Landing page display sizes (Persuade surface only; working screens use the fixed scale in theme.css). */
+@utility text-hero {
+  font-size: clamp(2.5rem, 5vw, 4.25rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+}
+@utility text-section {
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-weight: 800;
+}
+
+/* ---------------------------------------------------------------- The pad
+   quad: quad-ruled ground, drawn only around the document sheet. One cell is the 8px spacing unit;
+   every fourth line is a little darker, like a printed pad. */
+@utility quad {
+  background-color: var(--bench);
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--quad), var(--text) 10%) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--quad), var(--text) 10%) 1px, transparent 1px),
+    linear-gradient(var(--quad) 1px, transparent 1px),
+    linear-gradient(90deg, var(--quad) 1px, transparent 1px);
+  background-size:
+    calc(var(--layout-grid) * 4) calc(var(--layout-grid) * 4),
+    calc(var(--layout-grid) * 4) calc(var(--layout-grid) * 4),
+    var(--layout-grid) var(--layout-grid),
+    var(--layout-grid) var(--layout-grid);
+}
+/* sheet: the page of the pad the draft is written on. margin-rule adds the red rule down its left. */
+@utility sheet {
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+@utility margin-rule {
+  background-image: linear-gradient(90deg, transparent 47px,
+    color-mix(in oklab, var(--rule) 55%, transparent) 47px 48px, transparent 48px);
+}
+/* State is carried by the form of the line as well as colour, so it survives colour-blindness and print:
+   open is a solid underline in the margin red, resolved a single strike, excluded a dotted underline. */
+@utility state-open {
+  text-decoration: underline solid var(--rule) 2px;
+  text-underline-offset: 3px;
+}
+@utility state-resolved {
+  text-decoration: line-through solid currentColor 1px;
+  color: var(--text-muted);
+}
+@utility state-excluded {
+  text-decoration: underline dotted var(--border-input) 2px;
+  text-underline-offset: 3px;
+}
+
+/* A paper's versions as a stack of sheets (--k: 0 is the top sheet), offset like a small pile. Hovering or
+   focusing the card marks the top sheet's edge in the accent. */
+.vstack { position: relative; display: block; width: 2.25rem; height: 2.75rem; perspective: 240px; }
+.vstack > i {
+  position: absolute; inset: 0; border: 1px solid var(--border-input); border-radius: 2px; background: var(--bg);
+  box-shadow: var(--shadow-card); transform-origin: left center;
+  transform: translate(calc(var(--k) * 4px), calc(var(--k) * -3px));
+  transition: border-color var(--motion-base) var(--motion-ease);
+}
+.vstack > i:last-child {
+  background-image: repeating-linear-gradient(transparent 0 6px, var(--border) 6px 7px);
+}
+.paper:hover .vstack > i:last-child, .paper:focus-within .vstack > i:last-child { border-color: var(--accent); }
+
+/* The one focus style. Every interactive element uses focus-ring. */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+}
+
+:root { color-scheme: light dark; }
+
+body {
+  background: var(--bench);
+  color: var(--text);
+  font-family: var(--font-sans-stack);
+  font-size: var(--type-base);
+  line-height: var(--type-base-line);
+  font-variant-numeric: tabular-nums;
+  caret-color: var(--accent);
+}
+
+::selection { background: color-mix(in oklab, var(--accent) 28%, transparent); }
+a { text-underline-offset: 3px; }
+* { scrollbar-color: var(--border-input) transparent; scrollbar-width: thin; }
+
+/* ---------------------------------------------------------------- Motion
+   Pages open still: everything is on screen from the first paint. Motion only marks a change of state (a
+   strike, something arriving, a dialog opening) and the landing hero's one demo (lib/motion.ts times it). */
+
+/* Highlights: a tint and an underline in the source's colour. Nothing animates when a report opens. */
+.ev {
+  background:
+    linear-gradient(var(--tint), var(--tint)) no-repeat 0 0 / 100% 100%,
+    linear-gradient(var(--line), var(--line)) no-repeat 0 100% / 100% 2px;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.ev-excluded { --tint: transparent; background-image: none; border-bottom: 2px dotted var(--border-input); }
+/* Decided: still marked, lighter, struck once. */
+.ev-resolved { text-decoration: line-through 1px; text-decoration-color: color-mix(in oklab, currentColor 55%, transparent); --tint: color-mix(in oklab, var(--tint) 45%, transparent); }
+/* One outline pulse on the passage you jumped to. */
+.ev-pulse { animation: ev-pulse 400ms var(--motion-ease); }
+@keyframes ev-pulse { 0% { outline: 3px solid var(--focus); outline-offset: 2px; } 100% { outline: 3px solid transparent; outline-offset: 6px; } }
+
+/* A decision draws its strike left to right; undone, it retracts. Background line so it can animate. */
+.strike-draw {
+  background: linear-gradient(currentColor, currentColor) no-repeat 0 58% / 0% 1px;
+  transition: background-size var(--motion-base) var(--motion-ease);
+}
+.strike-draw.is-struck { background-size: 100% 1px; }
+
+/* The document pane's own scrollbar (components/pad-scrollbar.tsx): the native one is hidden, wheel, keys and touch stay native. */
+.pad-scroll { scrollbar-width: none; overscroll-behavior: contain; }
+.pad-scroll::-webkit-scrollbar { display: none; }
+
+/* Something new arriving (a version, an upload, a chosen file): a 6px rise and fade, 40ms apart, capped. */
+.settle { animation: settle 160ms var(--motion-ease) backwards; animation-delay: calc(min(var(--i, 0), 6) * 40ms); }
+@keyframes settle { from { opacity: 0; translate: 0 6px; } }
+
+/* Something landing in the hero demo (a footnote number, "All resolved"): enter() in lib/motion.ts sets when it
+   starts (--at), how long it runs (--dur) and its rhythm (--ease). */
+.enter-pop {
+  animation: enter-pop var(--dur, 400ms) var(--ease, var(--motion-enter)) var(--at, 0ms) backwards;
+}
+@keyframes enter-pop { from { opacity: 0; scale: .8; } }
+
+/* A highlight struck through as it is resolved: a third background layer draws the line left to right,
+   timed by an inline transition (transit() in lib/motion.ts). */
+.ev-strike {
+  background:
+    linear-gradient(var(--tint), var(--tint)) no-repeat 0 0 / 100% 100%,
+    linear-gradient(var(--line), var(--line)) no-repeat 0 100% / 100% 2px,
+    linear-gradient(currentColor, currentColor) no-repeat 0 58% / 0% 1px;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  transition-property: background-size;
+}
+.ev-strike.is-struck { background-size: 100% 100%, 100% 2px, 100% 1px; }
+
+/* Status dot that breathes while a step is running. */
+.breathe { animation: breathe 1.6s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: .35; scale: .8; } }
+
+/* Indeterminate progress: the lit segment travels the track. */
+.scan-x { animation: scan-x 1.4s cubic-bezier(.45, 0, .55, 1) infinite; }
+@keyframes scan-x { from { translate: -100% 0; } to { translate: 300% 0; } }
+
+/* Landing hero only: the sample sheet lies tilted on the pad and straightens a little under the pointer. */
+.tilt { perspective: 1600px; }
+.tilt > * { transform: rotateX(8deg) rotateY(-14deg) rotateZ(1.5deg); transform-origin: 60% 40%; transition: transform var(--motion-slow) var(--motion-ease); }
+.tilt:hover > * { transform: rotateX(3deg) rotateY(-5deg) rotateZ(.5deg); }
+
+/* Dialogs, menus and toasts open from their own centre; scale only, so Tailwind's translate stays free. */
+.pop-in { animation: pop-in 200ms var(--motion-ease) backwards; }
+@keyframes pop-in { from { opacity: 0; scale: .96; } }
+.fade-in { animation: fade-in 200ms ease-out backwards; }
+@keyframes fade-in { from { opacity: 0; } }
+
+/* The landing page's header (components/auto-hide-header.tsx). It floats over the page; hidden while the
+   hero is on screen, it slides down and fades in with the enter rhythm once the hero has gone, and leaves
+   faster with exit. Focus inside it (tabbing to the skip link) shows it. */
+.autohide-header {
+  position: fixed; inset-inline: 0; top: 0;
+  transition: opacity var(--motion-slow) var(--motion-enter), translate 320ms var(--motion-enter);
+}
+.autohide-header[data-hidden]:not(:focus-within) {
+  opacity: 0; translate: 0 -100%; pointer-events: none;
+  transition-duration: var(--motion-base); transition-timing-function: var(--motion-exit);
+}
+
+/* ---------------------------------------------------------------- Route transitions */
+::view-transition-old(root) { animation: 140ms ease-out both vt-fade-out; }
+::view-transition-new(root) { animation: 220ms var(--motion-ease) 60ms both vt-fade-in; }
+::view-transition-group(.exhibit) { animation-duration: 420ms; animation-timing-function: var(--motion-ease); }
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; translate: 0 6px; } }
+
+/* Reduced motion: no movement; every state still shows, arriving things fade in place. */
+@media (prefers-reduced-motion: reduce) {
+  .strike-draw { transition: none; }
+  .ev-pulse { animation: none; }
+  .tilt > *, .tilt:hover > * { transform: none; transition: none; }
+  .settle, .pop-in { animation: fluoresce-fade 200ms ease-out backwards; }
+  .enter-pop { animation: fluoresce-fade 200ms ease-out backwards; }
+  .autohide-header, .autohide-header[data-hidden]:not(:focus-within) { translate: none; }
+  .ev-strike { transition-duration: 0ms !important; transition-delay: 0ms !important; }
+  .breathe { animation: none; }
+  .scan-x { animation: none; width: 100%; opacity: .5; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 1ms !important; }
+}
+@keyframes fluoresce-fade { from { opacity: .4; } }

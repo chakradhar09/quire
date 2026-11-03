@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Quire</title>
+  <!-- The bookmark Q. Ring: centre (32,29), r 15, stroke 8 (it covers r 11 to 19). Ribbon: x 40 to 51, hanging to
+       y 55 with a 4.5-deep notch. Its right edge is flush with the ring's outer edge (x 51, tangent at (51,29)), so
+       the outline runs from the ring straight down the tail; its top follows the ring's centre circle (r 15) from
+       (40,41.69) to (47,29), then the band to x 51, so no corner shows at any size. Extents x 13 to 51, y 10 to 55. -->
+  <rect width="64" height="64" rx="14" fill="#123a2b"/>
+  <path d="M40 41.69A15 15 0 0 0 47 29H51V55L45.5 50.5L40 55Z" fill="#eff7f0"/>
+  <circle cx="32" cy="29" r="15" fill="none" stroke="#eff7f0" stroke-width="8"/>
+</svg>

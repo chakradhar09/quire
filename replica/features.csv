@@ -1,0 +1,48 @@
+feature,area,priority,original,clone,notes
+Upload a file (docx pdf txt rtf odt),submit,must,yes,yes,S04
+Paste text as a submission,submit,must,yes,yes,S04
+Reject invalid files (< 20 words / image-only PDF / too big / unsupported type),submit,must,yes,yes,S04 error states; limits from src 15 16
+Preview extracted text before confirming,submit,skip,yes,skip,personal use: nothing to confirm; S07 shows the extracted text
+Submissions list with similarity and AI scores,submissions,must,yes,yes,S03
+Processing status while a report builds,submissions,must,yes,yes,S03 shows -- until done
+Search the live web for matching sources,matching,must,yes,yes,replaces Turnitin's crawl; search API cost and rate limits
+Similarity score (matched words / total words; each word counted once),matching,must,yes,yes,ranking rule inferred; medium confidence
+Report viewer with numbered highlights per source,report,must,yes,yes,S07
+Ranked sources list with % per source,report,must,yes,yes,S08
+Side-by-side match comparison with source link,report,must,yes,yes,S10
+Filter: exclude quotes,filters,must,yes,yes,S11; recalculates score
+Filter: exclude bibliography,filters,must,yes,yes,S11; needs reference-heading detection
+Filter: exclude small matches under N words,filters,must,yes,yes,S11; default 8 words seen in guides
+Exclude a source and restore it,filters,must,yes,yes,S08 S12
+AI writing score with highlighted segments,ai,must,yes,yes,S14; own open-model detector
+AI score guardrails (300-word minimum / * under 20% / prose only),ai,must,yes,yes,src 7 8
+Match groups (not cited or quoted / missing quotation / missing citation / cited and quoted),report,should,yes,no,S09; needs quote and citation detection
+Search open scholarly sources (OpenAlex arXiv Crossref Semantic Scholar),matching,should,partial,no,free stand-in for licensed publisher content
+My reference library to compare against,library,should,partial,no,S17; Turnitin's repository equivalent for one user
+Integrity flag: hidden text,flags,should,yes,no,S13; DOCX run colors and font size
+Integrity flag: replaced characters,flags,should,yes,no,S13; lookalike Unicode and zero-width chars; normalize before matching
+Filter by source type (internet / publication / library),filters,should,yes,no,S11
+Download report as PDF,export,should,yes,no,S15
+Digital receipt (id / date / hash / word count),submit,skip,yes,skip,personal use: proof of submission is for institutions
+Version history for re-checked drafts,submissions,should,yes,no,F08
+Exclude my own earlier versions from matches by default,matching,should,no,no,clone-only; avoids self-matches
+AI-paraphrased label (purple) alongside AI (cyan),ai,should,yes,no,S14; src 9
+Similarity color bands on the score badge,report,should,yes,no,0 / 1-24 / 25-49 / 50-74 / 75-100
+Filter: exclude small matches under N percent,filters,could,yes,no,S11
+Translated-language matching,matching,could,yes,no,hard; needs translation step
+Cloud file picker (Google Drive / OneDrive),submit,could,yes,no,S04
+Compare scores across versions,submissions,could,no,no,clone-only
+Mobile layout with the side panel as a bottom sheet,report,could,no,no,Turnitin report is desktop-first
+Check from inside Word or Google Docs (Draft Coach style),integrations,could,yes,no,add-in is a separate build
+Download the original file,export,could,yes,no,S15
+Delete a document and its reports,submissions,could,yes,no,local data only
+AI detection for languages other than English,ai,could,partial,no,depends on detector model
+Turnitin student paper repository,data,skip,yes,skip,private data the app owns; never public
+Turnitin licensed publisher content,data,skip,yes,skip,partner deals; use open scholarly APIs instead
+Turnitin archived web crawl,data,skip,yes,skip,their index; use a live search API instead
+Turnitin's AI detection model,ai,skip,yes,skip,proprietary; build or use an open detector
+Classes and assignments,classes,skip,yes,skip,single user; out of scope by choice
+Feedback Studio grading (rubrics / QuickMarks / comments),grading,skip,yes,skip,out of scope by choice
+LMS integrations (Canvas / Moodle / Blackboard),integrations,skip,yes,skip,institution feature
+Instructor-only visibility and official score of record,roles,skip,yes,skip,no instructors in a personal tool
+Turnitin name / logo / colors / copy,brand,skip,yes,skip,clone gets its own identity

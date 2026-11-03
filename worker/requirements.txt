@@ -1,0 +1,21 @@
+httpx==0.28.1
+trafilatura==2.3.1
+pdfplumber==0.11.10
+python-docx==1.2.0
+striprtf==0.0.35
+odfpy==1.4.1
+py3langid==0.4.0
+# AI writing: PyTorch is installed first, on its own, because its build depends on the PC: the installer
+# (scripts/install) picks CUDA or CPU. By hand: pip install torch==2.14.1 --index-url
+# https://download.pytorch.org/whl/cu130 (NVIDIA GPU) or .../whl/cpu, then pip install -r requirements.txt.
+transformers==5.21.1
+# AI-writing classifier training data (calibration/classifier_data.py reads Ghostbuster's parquet files)
+pyarrow==25.0.1
+# OCR of the pictures in drafts (extract.py), on this PC: RapidOCR and its bundled PP-OCRv4 models (Apache-2.0)
+rapidocr-onnxruntime==1.4.4
+onnxruntime==1.31.0
+opencv-python==4.14.0.94
+shapely==2.2.0
+pyclipper==1.4.0
+protobuf==7.36.2
+flatbuffers==25.12.19

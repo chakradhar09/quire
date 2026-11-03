@@ -1,0 +1,70 @@
+  AAA   17.96:1  text                     on bg                   
+  AAA   16.76:1  text                     on surface              
+  AAA   15.46:1  text                     on surface-sunken       
+  AA     6.47:1  text-muted               on bg                   
+  AA     6.04:1  text-muted               on surface              
+  AA     5.57:1  text-muted               on surface-sunken       
+  AAA   10.35:1  on-accent                on accent               
+  AAA   14.63:1  on-accent                on accent-hover         
+  AAA   10.35:1  accent                   on bg                   
+  AA     6.57:1  on-accent                on danger               
+  AA     6.57:1  danger                   on bg                   
+  AA     5.75:1  danger                   on danger-surface       
+  AAA    7.57:1  success                  on bg                   
+  AA     6.63:1  success                  on success-surface      
+  AAA    7.20:1  warning                  on bg                   
+  AA     6.57:1  warning                  on warning-surface      
+  AAA    8.14:1  info                     on bg                   
+  AAA    7.02:1  info                     on info-surface         
+  AAA   15.71:1  text                     on danger-surface       
+  AAA   16.39:1  text                     on warning-surface      
+  AAA   15.49:1  text                     on info-surface         
+  AAA   15.73:1  text                     on success-surface      
+  PASS   3.73:1  border-input             on bg                   ui
+  PASS   3.48:1  border-input             on surface              ui
+  PASS   5.82:1  focus                    on bg                   ui
+  PASS   5.43:1  focus                    on surface              ui
+  PASS   5.01:1  focus                    on surface-sunken       ui
+  AAA    7.02:1  score-none-text          on score-none-bg        
+  AA     6.63:1  score-low-text           on score-low-bg         
+  AAA    7.12:1  score-mid-text           on score-mid-bg         
+  AA     6.45:1  score-high-text          on score-high-bg        
+  AA     6.53:1  score-max-text           on score-max-bg         
+  AAA   14.64:1  text                     on match-1-bg           
+  AAA   15.12:1  text                     on match-2-bg           
+  AAA   15.56:1  text                     on match-3-bg           
+  AAA   15.19:1  text                     on match-4-bg           
+  AAA   14.90:1  text                     on match-5-bg           
+  AAA   14.79:1  text                     on match-6-bg           
+  AAA   14.53:1  text                     on match-7-bg           
+  AAA   14.35:1  text                     on match-8-bg           
+  AAA   14.63:1  text                     on match-9-bg           
+  AAA   14.72:1  text                     on match-10-bg          
+  AA     6.57:1  on-accent                on match-1-solid        
+  AA     6.34:1  on-accent                on match-2-solid        
+  AA     6.65:1  on-accent                on match-3-solid        
+  AA     6.13:1  on-accent                on match-4-solid        
+  AA     6.34:1  on-accent                on match-5-solid        
+  AA     6.76:1  on-accent                on match-6-solid        
+  AA     6.43:1  on-accent                on match-7-solid        
+  AAA    7.27:1  on-accent                on match-8-solid        
+  AA     7.00:1  on-accent                on match-9-solid        
+  AA     6.29:1  on-accent                on match-10-solid       
+  PASS   5.36:1  match-1-solid            on match-1-bg           ui
+  PASS   5.34:1  match-2-solid            on match-2-bg           ui
+  PASS   5.76:1  match-3-solid            on match-3-bg           ui
+  PASS   5.18:1  match-4-solid            on match-4-bg           ui
+  PASS   5.26:1  match-5-solid            on match-5-bg           ui
+  PASS   5.57:1  match-6-solid            on match-6-bg           ui
+  PASS   5.20:1  match-7-solid            on match-7-bg           ui
+  PASS   5.81:1  match-8-solid            on match-8-bg           ui
+  PASS   5.70:1  match-9-solid            on match-9-bg           ui
+  PASS   5.15:1  match-10-solid           on match-10-bg          ui
+  AAA   14.76:1  text                     on ai-bg                
+  AAA   14.09:1  text                     on ai-paraphrased-bg    
+  AA     6.69:1  on-accent                on ai-solid             
+  AAA    7.32:1  on-accent                on ai-paraphrased-solid 
+  PASS   5.50:1  ai-solid                 on ai-bg                ui
+  PASS   5.74:1  ai-paraphrased-solid     on ai-paraphrased-bg    ui
+
+  68 pairs, 0 failing AA

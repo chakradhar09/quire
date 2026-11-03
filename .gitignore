@@ -1,0 +1,20 @@
+# Your drafts, fetched pages and the database: never committed.
+data/
+
+# Worker secrets and its virtual environment.
+worker/.env
+worker/.venv/
+__pycache__/
+
+# Tool caches.
+.ruff_cache/
+
+# Editor and tool state.
+.idea/
+.impeccable/
+
+# Headless browser snapshots from manual checks.
+.playwright-mcp/
+
+# Knowledge-graph output (graphify).
+graphify-out/

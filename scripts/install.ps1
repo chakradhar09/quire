@@ -1,0 +1,184 @@
+<#
+.SYNOPSIS
+  Installs Quire on Windows: the app, its Python worker, the AI-writing model, and Start menu shortcuts.
+
+.DESCRIPTION
+  One line, in PowerShell:
+    irm https://raw.githubusercontent.com/chakradhar09/quire/main/scripts/install.ps1 | iex
+
+  It needs Git, Node.js 22.13 or later and Python 3.11 or 3.12, and says how to get any that are missing.
+  Everything goes into one folder (default %LOCALAPPDATA%\Quire): the code in app\, your drafts and the
+  database in app\data\. Run it again to repair an install; use "Update Quire" to update.
+
+.PARAMETER Dir         Where to install (default %LOCALAPPDATA%\Quire).
+.PARAMETER Source      Git URL or local folder to install from (default the GitHub repository).
+.PARAMETER BraveKey    Brave Search API key for the similarity check (asked for when omitted; it can also be added
+                       later on Quire's Settings page).
+.PARAMETER Cpu         Install the CPU build of PyTorch even when an NVIDIA GPU is present.
+.PARAMETER NoModel     Skip downloading the AI-writing classifier.
+.PARAMETER NoShortcuts Skip the Start menu and desktop shortcuts.
+.PARAMETER Yes         Answer every question with its default (for scripted installs).
+#>
+param(
+  [string]$Dir = (Join-Path $env:LOCALAPPDATA "Quire"),
+  [string]$Source = "https://github.com/chakradhar09/quire.git",
+  [string]$BraveKey,
+  [switch]$Cpu,
+  [switch]$NoModel,
+  [switch]$NoShortcuts,
+  [switch]$Yes
+)
+$ErrorActionPreference = "Stop"
+
+# Kept in step with web/lib/updates.ts (REPO) and MODEL.md.
+$Repo = "chakradhar09/quire"
+$TorchVersion = "2.14.1"
+$ModelUrl = "https://github.com/$Repo/releases/download/model-v5/quire-classifier-v5.zip"
+$ModelEnv = @{ AI_DETECTOR = "classifier"; AI_CLASSIFIER_THRESHOLD = "0.2028"; AI_CLASSIFIER_FALSE_POSITIVE_RATE = "0.01"; AI_CLASSIFIER_DETECTION_RATE = "0.7556" }
+
+function Say($text) { Write-Host "==> $text" -ForegroundColor Green }
+function Warn($text) { Write-Host "  ! $text" -ForegroundColor Yellow }
+function Run($exe, [string[]]$arguments) {
+  & $exe @arguments
+  if ($LASTEXITCODE) { throw "$exe $($arguments -join ' ') failed (exit $LASTEXITCODE)" }
+}
+function Ask($question, $default) {
+  if ($Yes) { return $default }
+  $answer = Read-Host "$question"
+  if ([string]::IsNullOrWhiteSpace($answer)) { return $default } else { return $answer.Trim() }
+}
+# Files the app parses (settings.json) or the worker reads (.env) are written as UTF-8 without a BOM:
+# Windows PowerShell's -Encoding utf8 would add one, and JSON.parse rejects it.
+function Write-Plain($path, $text) { [IO.File]::WriteAllText($path, $text, (New-Object Text.UTF8Encoding $false)) }
+function Version($text) { if ($text -match '(\d+)\.(\d+)(\.(\d+))?') { [version]"$($Matches[1]).$($Matches[2]).$([int]$Matches[4])" } }
+
+# ---------------------------------------------------------------- What it needs
+Say "Checking for Git, Node.js and Python"
+$missing = @()
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) { $missing += "Git.Git" }
+$node = Get-Command node -ErrorAction SilentlyContinue
+if (-not $node -or (Version (node --version)) -lt [version]"22.13.0") { $missing += "OpenJS.NodeJS.LTS" }
+# Python 3.11 or 3.12: the OCR package has no build for 3.13 or later yet. The Python launcher asked for those
+# versions first, then python on PATH; kept as the executable and the arguments that pick the version.
+function Good-Python($v) { $v = Version "$v"; return $v -and $v -ge [version]"3.11.0" -and $v -lt [version]"3.13.0" }
+$pyExe = $null; $pyArgs = @()
+foreach ($candidate in @(@{ Exe = "py"; Args = @("-3.12") }, @{ Exe = "py"; Args = @("-3.11") }, @{ Exe = "python"; Args = @() })) {
+  if (Get-Command $candidate.Exe -ErrorAction SilentlyContinue) {
+    $v = & $candidate.Exe @($candidate.Args + "--version") 2>$null
+    if ($LASTEXITCODE -eq 0 -and (Good-Python $v)) { $pyExe = $candidate.Exe; $pyArgs = $candidate.Args; break }
+  }
+}
+if (-not $pyExe) { $missing += "Python.Python.3.12" }
+if ($missing) {
+  Warn "Quire needs: $($missing -join ', ')."
+  Warn "Install them with:  winget install $($missing -join ' ')"
+  Warn "then open a new PowerShell window and run this installer again."
+  exit 1
+}
+
+# ---------------------------------------------------------------- The code
+$App = Join-Path $Dir "app"
+New-Item -ItemType Directory -Force $Dir | Out-Null
+if (Test-Path (Join-Path $App ".git")) {
+  Say "Quire is already in $App; repairing it in place (use Update Quire to update)"
+} else {
+  Say "Downloading Quire into $App"
+  Run git @("clone", "--quiet", $Source, $App)
+  $tag = git -C $App tag --list "v*" --sort=-v:refname | Select-Object -First 1
+  if ($tag) { Run git @("-C", $App, "checkout", "--quiet", $tag); Say "Using release $tag" }
+}
+
+# ---------------------------------------------------------------- The worker (Python)
+Say "Setting up the worker's Python environment (this downloads PyTorch, a few hundred MB to 2.5 GB)"
+$venv = Join-Path $App "worker\.venv"
+$py = Join-Path $venv "Scripts\python.exe"
+if ((Test-Path $py) -and -not (Good-Python (& $py --version))) { Remove-Item -Recurse -Force $venv }  # made with another Python
+if (-not (Test-Path $py)) { Run $pyExe @($pyArgs + @("-m", "venv", $venv)) }
+Run $py @("-m", "pip", "install", "--quiet", "--upgrade", "pip")
+$gpu = (-not $Cpu) -and (Get-Command nvidia-smi -ErrorAction SilentlyContinue)
+$index = if ($gpu) { "https://download.pytorch.org/whl/cu130" } else { "https://download.pytorch.org/whl/cpu" }
+Say ("PyTorch {0} for {1}" -f $TorchVersion, $(if ($gpu) { "your NVIDIA GPU" } else { "the CPU" }))
+Run $py @("-m", "pip", "install", "--quiet", "torch==$TorchVersion", "--index-url", $index)
+Run $py @("-m", "pip", "install", "--quiet", "-r", (Join-Path $App "worker\requirements.txt"))
+
+# ---------------------------------------------------------------- The app (Node)
+Say "Building the app"
+Push-Location (Join-Path $App "web")
+try { Run npm @("ci", "--no-audit", "--no-fund", "--loglevel=error"); Run npm @("run", "build") } finally { Pop-Location }
+
+# ---------------------------------------------------------------- Settings
+$envFile = Join-Path $App "worker\.env"
+if (-not (Test-Path $envFile)) { Copy-Item (Join-Path $App "worker\.env.example") $envFile }
+$lines = [System.Collections.Generic.List[string]](Get-Content $envFile)
+function Set-Env($key, $value) {
+  $i = $lines.FindIndex([Predicate[string]]{ param($l) $l -match "^$key=" })
+  if ($i -ge 0) { $lines[$i] = "$key=$value" } else { $lines.Add("$key=$value") }
+}
+
+# ---------------------------------------------------------------- The AI-writing model
+if (-not $NoModel) {
+  $modelDir = Join-Path $App "data\calibration\classifier\model"
+  if (Test-Path (Join-Path $modelDir "model.safetensors")) {
+    Say "The AI-writing model is already there"
+  } else {
+    Say "Downloading the AI-writing model (about 575 MB)"
+    $zip = Join-Path $env:TEMP "quire-classifier.zip"
+    try {
+      Invoke-WebRequest $ModelUrl -OutFile $zip -UseBasicParsing
+      New-Item -ItemType Directory -Force $modelDir | Out-Null
+      Expand-Archive $zip -DestinationPath $modelDir -Force
+      Remove-Item $zip
+    } catch {
+      Warn "Could not download the model ($($_.Exception.Message))."
+      Warn "Run the installer again later. Until then the AI estimate uses Binoculars, which downloads two"
+      Warn "1.5B-parameter models (about 6 GB) the first time a draft is checked."
+    }
+  }
+  if (Test-Path (Join-Path $modelDir "model.safetensors")) { foreach ($k in $ModelEnv.Keys) { Set-Env $k $ModelEnv[$k] } }
+}
+Write-Plain $envFile (($lines -join "`n") + "`n")
+
+# Your settings (data\settings.json, the same file the Settings page edits): the Brave key and auto-update.
+$settings = Join-Path $App "data\settings.json"
+$saved = @{ autoUpdate = $false; braveApiKey = "" }
+if (Test-Path $settings) {
+  try { $old = Get-Content $settings -Raw | ConvertFrom-Json; $saved.autoUpdate = [bool]$old.autoUpdate; if ($old.braveApiKey) { $saved.braveApiKey = [string]$old.braveApiKey } } catch { }
+} else {
+  $saved.autoUpdate = (Ask "  Install new versions automatically when Quire starts? [y/N]" "n") -match "^[yY]"
+}
+if (-not $BraveKey -and -not $saved.braveApiKey) {
+  Write-Host "  The similarity check searches the web with your own Brave Search API key. How to get one: README, Getting a Brave Search API key."
+  $BraveKey = Ask "  Paste your key, or press Enter to add it later on Quire's Settings page" ""
+}
+if ($BraveKey) { $saved.braveApiKey = $BraveKey.Trim() }
+New-Item -ItemType Directory -Force (Split-Path $settings) | Out-Null
+Write-Plain $settings ((ConvertTo-Json ([ordered]@{ autoUpdate = [bool]$saved.autoUpdate; braveApiKey = $saved.braveApiKey })) + "`n")
+
+# ---------------------------------------------------------------- Shortcuts
+if (-not $NoShortcuts) {
+  Say "Adding Quire to the Start menu and desktop"
+  $shell = New-Object -ComObject WScript.Shell
+  $menu = Join-Path ([Environment]::GetFolderPath("Programs")) "Quire"
+  New-Item -ItemType Directory -Force $menu | Out-Null
+  $ps = (Get-Command powershell).Source
+  $icon = Join-Path $App "scripts\quire.ico"
+  $links = @(
+    @{ Path = (Join-Path $menu "Quire.lnk"); Script = "quire.ps1"; Args = ""; Note = "Open Quire" },
+    @{ Path = (Join-Path $menu "Stop Quire.lnk"); Script = "quire.ps1"; Args = " -Stop"; Note = "Stop Quire running in the background" },
+    @{ Path = (Join-Path $menu "Update Quire.lnk"); Script = "update.ps1"; Args = ""; Note = "Install the latest release of Quire" },
+    @{ Path = (Join-Path ([Environment]::GetFolderPath("Desktop")) "Quire.lnk"); Script = "quire.ps1"; Args = ""; Note = "Open Quire" }
+  )
+  foreach ($l in $links) {
+    $s = $shell.CreateShortcut($l.Path)
+    $s.TargetPath = $ps
+    $hidden = if ($l.Script -eq "quire.ps1") { "-WindowStyle Hidden " } else { "" }
+    $s.Arguments = "-NoProfile -ExecutionPolicy Bypass $hidden-File `"$(Join-Path $App "scripts\$($l.Script)")`"$($l.Args)"
+    $s.WorkingDirectory = $App
+    $s.IconLocation = $icon
+    $s.Description = $l.Note
+    $s.Save()
+  }
+}
+
+Say "Quire is installed. Open it from the Start menu, or run: $(Join-Path $App 'scripts\quire.ps1')"
+if (-not $Yes -and (Ask "  Open Quire now? [Y/n]" "y") -match "^[yY]") { & (Join-Path $App "scripts\quire.ps1") }
