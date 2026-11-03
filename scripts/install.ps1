@@ -159,7 +159,7 @@ if (-not $NoModel -and -not (Test-Path (Join-Path $modelDir "model.safetensors")
 if (Test-Path (Join-Path $App ".git")) {
   Say "Quire is already in $App; repairing it in place"
   # A copy on a release moves to the newest one, so a release that can't install is repaired by the next, or by
-  # its tag moved to a fixed commit (--force takes the moved tag: 0.1.0's was). A copy between releases, a
+  # its tag moved to a fixed commit (--force takes a moved tag). A copy between releases, a
   # developer's, is left where it is. Your drafts (app\data) are not in Git.
   $current = Probe git @("-C", $App, "describe", "--tags", "--exact-match", "--match", "v*")
   if ($current -and $current -match '^v\d') {
@@ -304,7 +304,7 @@ if (-not $NoShortcuts) {
 
 # ---------------------------------------------------------------- Settings > Apps
 # Listed there for this user only (no admin rights); its Uninstall button runs scripts\uninstall.ps1, which
-# the first build of 0.1.0 didn't have.
+# 0.1.0 didn't have.
 $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Quire"
 if (Test-Path (Join-Path $App "scripts\uninstall.ps1")) {
   if (-not (Test-Path $key)) { New-Item $key -Force | Out-Null }
