@@ -10,6 +10,8 @@ param([switch]$Quiet, [switch]$Force)
 $ErrorActionPreference = "Stop"
 $App = Split-Path $PSScriptRoot -Parent
 function Say($text) { Write-Host "==> $text" -ForegroundColor Green }
+# Runs a program only to see what it prints (Windows PowerShell 5.1 makes its stderr fatal under "Stop").
+function Probe($exe, [string[]]$arguments) { $ErrorActionPreference = "Continue"; & $exe @arguments 2>$null }
 function Run($exe, [string[]]$arguments) {
   & $exe @arguments
   if ($LASTEXITCODE) { throw "$exe $($arguments -join ' ') failed (exit $LASTEXITCODE)" }
@@ -19,7 +21,7 @@ git -C $App fetch --quiet --tags
 if ($LASTEXITCODE) { if (-not $Quiet) { Write-Host "Could not reach the update server; try again later." }; exit 0 }
 $latest = git -C $App tag --list "v*" --sort=-v:refname | Select-Object -First 1
 # The release this copy is on: its tag, or else the version in package.json (a copy between releases).
-$current = git -C $App describe --tags --exact-match 2>$null
+$current = Probe git @("-C", $App, "describe", "--tags", "--exact-match", "--match", "v*")
 if (-not $current) { $current = "v" + (Get-Content (Join-Path $App "web\package.json") -Raw | ConvertFrom-Json).version }
 if (-not $latest -or ((-not $Force) -and ([version]($latest.TrimStart("v").Split("-")[0]) -le [version]($current.TrimStart("v").Split("-")[0])))) {
   if (-not $Quiet) { Write-Host "Quire $current is the latest release." }
@@ -34,5 +36,8 @@ Run git @("-C", $App, "checkout", "--quiet", $latest)
 Run (Join-Path $App "worker\.venv\Scripts\python.exe") @("-m", "pip", "install", "--quiet", "-r", (Join-Path $App "worker\requirements.txt"))
 Push-Location (Join-Path $App "web")
 try { Run npm @("ci", "--no-audit", "--no-fund", "--loglevel=error"); Run npm @("run", "build") } finally { Pop-Location }
+# The version Settings > Apps shows.
+$key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Quire"
+if (Test-Path $key) { Set-ItemProperty $key DisplayVersion $latest.TrimStart("v") }
 Say "Quire is now $latest"
 if ($wasRunning -and -not $Quiet) { & (Join-Path $PSScriptRoot "quire.ps1") }

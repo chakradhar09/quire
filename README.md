@@ -45,7 +45,7 @@ So a low score does not mean a person wrote it, and a high score does not mean t
 | **Internet** | To install, for the similarity check's web searches, and to check for updates |
 | **Brave Search API key** | For the similarity check; Brave asks for a card but gives about 100 checks' worth of free credit a month. See [Getting a Brave Search API key](#getting-a-brave-search-api-key). |
 
-**The installer checks all of this for you.** If Git, Node.js or Python is missing or too old, it asks before installing it, with **winget** on Windows or **Homebrew** on macOS. Python and Node.js are covered everywhere: on Linux, or a Mac without Homebrew, it offers a private Python 3.12 and Node.js 22 kept inside Quire's own folder (no admin rights, nothing else on your computer changes, removed when you delete the folder). For anything else it can't install, it tells you exactly what to install, and you run it again afterwards.
+**The installer checks all of this for you.** If Git, Node.js or Python is missing or too old, it asks before installing it, with **winget** on Windows, **Homebrew** on macOS, or your package manager for Git on Linux (it asks for your password). Python and Node.js are covered everywhere: on Linux, or a Mac without Homebrew, it offers a private Python 3.12 and Node.js 22 kept inside Quire's own folder (no admin rights, nothing else on your computer changes, removed when you uninstall Quire). For anything else it can't install, it tells you exactly what to install, and you run it again afterwards.
 
 ## Install
 
@@ -71,7 +71,9 @@ The similarity check also needs a **Brave Search API key**, which you add once o
 - *"Quire still needs: ..."*: install what it lists (the line it prints shows how), open a **new** PowerShell or Terminal window so it is found, and run the installer again.
 - *"curl: command not found"* (some Linux systems): install curl with your package manager, e.g. `sudo apt install curl`.
 - *Python 3.13 or 3.14 is installed but Quire wants 3.12*: say yes when the installer offers Python 3.12; both can stay, and Quire uses 3.12.
+- *"can't create virtual environments"* (Debian, Ubuntu): your Python lacks its `venv` part. Say yes to the private Python 3.12, or install the package it names (e.g. `sudo apt install python3.12-venv`) and run the installer again.
 - *It stops partway (a download failed)*: run the same line again. It picks up where it left off, and your drafts are never touched.
+- *"npm ci can only install packages when your package.json and package-lock.json are in sync"* at **Building the app**: Quire 0.1.0 had this bug with Node.js 22. Run the installer again: it moves the install to the newest release, which fixes it.
 - Anything else: [open an issue](https://github.com/chakradhar09/quire/issues) with the last lines the installer printed.
 
 ## Getting a Brave Search API key
@@ -101,10 +103,24 @@ Open **Quire** from the Start menu (or run `quire`). It starts in the background
 
 When a new release is out, an **Update** notice appears in Quire's header. Install it with **Update Quire** (or `quire-update`), or switch on **Install new releases automatically when Quire starts** on the Settings page. Your drafts and reports are kept.
 
+*Updating from 0.1.0 on macOS or Linux stops with "Your local changes would be overwritten by checkout"?* That was a bug in 0.1.0's updater. Run the install line again (it updates and fixes the updater, and keeps your drafts); updates work normally after that.
+
+## Uninstall
+
+**Windows:** **Uninstall Quire** in the Start menu (in the Quire folder), or **Settings > Apps > Quire > Uninstall**.
+
+**macOS and Linux:** run `quire-uninstall`, or if that command isn't there:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chakradhar09/quire/main/scripts/uninstall.sh | bash
+```
+
+It asks before removing anything, and asks whether to keep your drafts, reports and settings. Kept, they move to **Documents\Quire data &lt;date&gt;** (Windows) or **~/Quire-data-&lt;date&gt;**. It removes Quire, its shortcuts and commands, and the private Python and Node.js if the installer added them; Git, Node.js or Python that you (or winget or Homebrew) installed stay, since other programs may use them.
+
 ## Privacy and safety
 
 - **What leaves your PC:** the short phrases sent to Brave Search for the similarity check, the pages it then fetches, and once a day a request to GitHub for the latest release number (`QUIRE_UPDATE_CHECK=off` in the environment turns that off). Your files never leave.
-- **Where your work lives:** the `data` folder inside the install: uploads, extracted text, reports and the database. Delete it to remove everything.
+- **Where your work lives:** the `data` folder inside the install: uploads, extracted text, reports and the database. Delete it, or [uninstall](#uninstall) without keeping your data, to remove everything.
 - **Quire has no login and must never be exposed to a network.** It only answers on `127.0.0.1`; don't put it behind a proxy or open its port to other machines.
 
 ## How it works

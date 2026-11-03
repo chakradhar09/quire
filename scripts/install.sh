@@ -135,7 +135,7 @@ if [ -d "$APP/.git" ]; then
   say "Quire is already in $APP; repairing it in place"
   # A copy on a release moves to the newest one, so a release that can't install is repaired by the next
   # (a copy between releases, a developer's, is left where it is). Your drafts (app/data) are not in Git.
-  if current="$(git -C "$APP" describe --tags --exact-match 2>/dev/null)" && git -C "$APP" fetch --quiet --tags 2>/dev/null; then
+  if current="$(git -C "$APP" describe --tags --exact-match --match "v*" 2>/dev/null)" && git -C "$APP" fetch --quiet --tags 2>/dev/null; then
     tag="$(git -C "$APP" tag --list 'v*' --sort=-v:refname | head -1)"
     if [ -n "$tag" ] && [ "$tag" != "$current" ] && at_least "${tag#v}" "${current#v}"; then
       if git -C "$APP" -c core.fileMode=false checkout --quiet "$tag"; then say "Moved from release $current to $tag"

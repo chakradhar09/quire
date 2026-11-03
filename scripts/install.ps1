@@ -8,7 +8,8 @@
 
   It needs Git, Node.js 22.13 or later and Python 3.11 or 3.12, and says how to get any that are missing.
   Everything goes into one folder (default %LOCALAPPDATA%\Quire): the code in app\, your drafts and the
-  database in app\data\. Run it again to repair an install; use "Update Quire" to update.
+  database in app\data\. Run it again to repair an install; use "Update Quire" to update and "Uninstall Quire"
+  (or Settings > Apps) to remove it.
 
 .PARAMETER Dir         Where to install (default %LOCALAPPDATA%\Quire).
 .PARAMETER Source      Git URL or local folder to install from (default the GitHub repository).
@@ -42,6 +43,9 @@ function Run($exe, [string[]]$arguments) {
   & $exe @arguments
   if ($LASTEXITCODE) { throw "$exe $($arguments -join ' ') failed (exit $LASTEXITCODE)" }
 }
+# Runs a program only to see what it prints; its errors are discarded. Windows PowerShell 5.1 turns a program's
+# stderr into an error that $ErrorActionPreference = "Stop" makes fatal (py -3.12 with no 3.12, git describe).
+function Probe($exe, [string[]]$arguments) { $ErrorActionPreference = "Continue"; & $exe @arguments 2>$null }
 function Ask($question, $default) {
   if ($Yes) { return $default }
   $answer = Read-Host "$question"
@@ -71,7 +75,7 @@ function Find-Missing {
   }
   foreach ($candidate in @(@{ Exe = "py"; Args = @("-3.12") }, @{ Exe = "py"; Args = @("-3.11") }, @{ Exe = "python"; Args = @() }) + $installed) {
     if (Get-Command $candidate.Exe -ErrorAction SilentlyContinue) {
-      $v = & $candidate.Exe @($candidate.Args + "--version") 2>$null
+      $v = Probe $candidate.Exe @($candidate.Args + "--version")
       if ($LASTEXITCODE -eq 0 -and (Good-Python $v)) { $script:pyExe = $candidate.Exe; $script:pyArgs = $candidate.Args; break }
     }
   }
@@ -105,7 +109,18 @@ if ($missing.Count) {
 $App = Join-Path $Dir "app"
 New-Item -ItemType Directory -Force $Dir | Out-Null
 if (Test-Path (Join-Path $App ".git")) {
-  Say "Quire is already in $App; repairing it in place (use Update Quire to update)"
+  Say "Quire is already in $App; repairing it in place"
+  # A copy on a release moves to the newest one, so a release that can't install is repaired by the next
+  # (a copy between releases, a developer's, is left where it is). Your drafts (app\data) are not in Git.
+  $current = Probe git @("-C", $App, "describe", "--tags", "--exact-match", "--match", "v*")
+  if ($current -and $current -match '^v\d') {
+    Probe git @("-C", $App, "fetch", "--quiet", "--tags") | Out-Null
+    $tag = git -C $App tag --list "v*" --sort=-v:refname | Select-Object -First 1
+    if ($tag -and $tag -ne $current -and (Version $tag) -gt (Version $current)) {
+      Probe git @("-C", $App, "checkout", "--quiet", $tag) | Out-Null
+      if ($LASTEXITCODE) { Warn "Could not move to $tag; repairing $current instead." } else { Say "Moved from release $current to $tag" }
+    }
+  }
 } else {
   Say "Downloading Quire into $App"
   Run git @("clone", "--quiet", $Source, $App)
@@ -191,6 +206,7 @@ if (-not $NoShortcuts) {
     @{ Path = (Join-Path $menu "Quire.lnk"); Script = "quire.ps1"; Args = ""; Note = "Open Quire" },
     @{ Path = (Join-Path $menu "Stop Quire.lnk"); Script = "quire.ps1"; Args = " -Stop"; Note = "Stop Quire running in the background" },
     @{ Path = (Join-Path $menu "Update Quire.lnk"); Script = "update.ps1"; Args = ""; Note = "Install the latest release of Quire" },
+    @{ Path = (Join-Path $menu "Uninstall Quire.lnk"); Script = "uninstall.ps1"; Args = " -Pause"; Note = "Remove Quire from this PC" },
     @{ Path = (Join-Path ([Environment]::GetFolderPath("Desktop")) "Quire.lnk"); Script = "quire.ps1"; Args = ""; Note = "Open Quire" }
   )
   foreach ($l in $links) {
@@ -205,5 +221,22 @@ if (-not $NoShortcuts) {
   }
 }
 
+# ---------------------------------------------------------------- Settings > Apps
+# Listed there for this user only (no admin rights); its Uninstall button runs scripts\uninstall.ps1.
+$key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Quire"
+if (-not (Test-Path $key)) { New-Item $key -Force | Out-Null }
+$entry = [ordered]@{
+  DisplayName = "Quire"
+  DisplayVersion = (Get-Content (Join-Path $App "web\package.json") -Raw | ConvertFrom-Json).version
+  Publisher = "Quire (open source)"
+  DisplayIcon = (Join-Path $App "scripts\quire.ico")
+  InstallLocation = $Dir
+  URLInfoAbout = "https://github.com/$Repo"
+  UninstallString = "`"$((Get-Command powershell).Source)`" -NoProfile -ExecutionPolicy Bypass -File `"$(Join-Path $App 'scripts\uninstall.ps1')`" -Pause"
+}
+foreach ($k in $entry.Keys) { Set-ItemProperty $key $k $entry[$k] }
+foreach ($k in "NoModify", "NoRepair") { Set-ItemProperty $key $k 1 -Type DWord }
+
 Say "Quire is installed. Open it from the Start menu, or run: $(Join-Path $App 'scripts\quire.ps1')"
+Write-Host "  To remove it: Uninstall Quire in the Start menu, or Settings > Apps."
 if (-not $Yes -and (Ask "  Open Quire now? [Y/n]" "y") -match "^[yY]") { & (Join-Path $App "scripts\quire.ps1") }

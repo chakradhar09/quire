@@ -14,7 +14,7 @@ if ! git -C "$APP" fetch --quiet --tags; then
 fi
 latest="$(git -C "$APP" tag --list 'v*' --sort=-v:refname | head -1)"
 # The release this copy is on: its tag, or else the version in package.json (a copy between releases).
-current="$(git -C "$APP" describe --tags --exact-match 2>/dev/null || echo "v$("$APP/worker/.venv/bin/python" -c "import json,sys; print(json.load(open(sys.argv[1]))['version'])" "$APP/web/package.json")")"
+current="$(git -C "$APP" describe --tags --exact-match --match "v*" 2>/dev/null || echo "v$("$APP/worker/.venv/bin/python" -c "import json,sys; print(json.load(open(sys.argv[1]))['version'])" "$APP/web/package.json")")"
 # Version numbers as one integer with awk (macOS's sort has no -V before macOS 13); pre-release suffixes dropped.
 ver() { echo "${1%%-*}" | awk -F. '{ printf "%d%03d%03d\n", $1, $2, $3 }'; }
 if [ -z "$latest" ] || { [ "$FORCE" = 0 ] && [ "$(ver "${latest#v}")" -le "$(ver "${current#v}")" ]; }; then
