@@ -237,11 +237,15 @@ if [ "${QUIRE_NO_MODEL:-}" != 1 ]; then
       fi
       wait "$model_pid" || true; model_pid=""
     fi
-    if [ -f "$MODEL_ZIP" ]; then
+    # A .part can be whole: resuming a finished download, some curl versions report the server's "nothing left
+    # to send" as an error.
+    zip="$MODEL_ZIP"; [ -f "$zip" ] || zip="$MODEL_ZIP.part"
+    if [ -f "$zip" ]; then
       say "Unpacking the AI-writing model"
       rm -rf "$MODEL_DIR"; mkdir -p "$MODEL_DIR"
-      if unzip_model "$MODEL_ZIP" "$MODEL_DIR"; then rm -rf "$DIR/download"
-      else rm -rf "$MODEL_DIR" "$MODEL_ZIP"; warn "The downloaded model was damaged and was deleted."; fi
+      if unzip_model "$zip" "$MODEL_DIR"; then rm -rf "$DIR/download"
+      elif [ "$zip" = "$MODEL_ZIP" ]; then rm -rf "$MODEL_DIR" "$zip"; warn "The downloaded model was damaged and was deleted."
+      else rm -rf "$MODEL_DIR"; warn "The model download didn't finish: $(tail -1 "$DIR/download/model.log" 2>/dev/null)"; fi
     else
       warn "Could not download the model: $(tail -1 "$DIR/download/model.log" 2>/dev/null)"
     fi
