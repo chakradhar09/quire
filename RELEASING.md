@@ -5,12 +5,12 @@ The installer installs the newest `v*` tag, `update` moves to it, and the app's 
 ## A new version
 
 1. In `web/`: `npm version 0.2.0 --no-git-tag-version` (sets `package.json` and `package-lock.json`).
-2. Run the checks: `npm test`, `npx tsc --noEmit`, `npx eslint app components lib` and `npm run build` in `web/`; `python -m unittest discover -p "*_test.py"` in `worker/`. The production build catches things the dev server doesn't.
-   Then check that the lockfile installs the way the installer does: in a fresh copy of `web/` (no `node_modules`), `npm ci`, and `npx -y npm@10 ci` for Node.js 22's npm. 0.1.0 shipped a `package-lock.json` missing `@emnapi/core` and `@emnapi/runtime`; no npm would `ci` it, so every install stopped at "Building the app" (a dev copy with `node_modules` already in place doesn't notice). Fix one with `npx -y npm@10 install --package-lock-only` and commit the result.
+2. Make sure **CI** is green on `main` (GitHub, Actions): `.github/workflows/ci.yml` runs the app's tests, types, lint and build on Node.js 22 and 24, the worker's tests, ShellCheck and a PowerShell parse of the scripts, and a real install, run and uninstall of the commit on Linux and Windows. By hand, the same is `npm test`, `npx tsc --noEmit`, `npx eslint app components lib` and `npm run build` in `web/`, and `python -m unittest discover -p "*_test.py"` in `worker/`.
+   CI's `npm ci` on both Node.js versions also checks that the lockfile installs the way the installer does. 0.1.0 shipped a `package-lock.json` missing `@emnapi/core` and `@emnapi/runtime`; no npm would `ci` it, so every install stopped at "Building the app" (a dev copy with `node_modules` already in place doesn't notice). Fix one with `npx -y npm@10 install --package-lock-only` and commit the result.
 
    (0.1.1 fixed it. The installer and the updaters fetch tags with `--force`, so a moved tag would also reach existing installs, but prefer a new version: a moved tag doesn't show the update notice, because `package.json`'s version is unchanged.)
 3. Commit, then `git tag v0.2.0` and `git push origin main v0.2.0`.
-4. On GitHub, **Releases → Draft a new release** from the tag, with a few lines on what changed. Publishing it is what makes the update notice appear.
+4. The tag starts `.github/workflows/release.yml`: CI again on the tagged commit, a check that the tag matches `web/package.json`, then the GitHub release, with notes made from the commits. Publishing it is what makes the update notice appear. Edit the release on GitHub to put a few lines on what changed at the top. (A release you made by hand before the workflow finished is left as it is.)
 5. If the release changes the PyTorch version (`TorchVersion` in `scripts/install.ps1`, `TORCH_VERSION` in `scripts/install.sh`), say in the notes to run the installer again: `update` does not reinstall PyTorch.
 
 ## The AI-writing model
