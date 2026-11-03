@@ -12,13 +12,17 @@ $App = Split-Path $PSScriptRoot -Parent
 function Say($text) { Write-Host "==> $text" -ForegroundColor Green }
 # Runs a program only to see what it prints (Windows PowerShell 5.1 makes its stderr fatal under "Stop").
 function Probe($exe, [string[]]$arguments) { $ErrorActionPreference = "Continue"; & $exe @arguments 2>$null }
+# Runs a program and stops if it fails, judged by its exit code alone. Windows PowerShell 5.1 can turn every line
+# a program writes to stderr into an error, which "Stop" makes fatal and which it prints as one: uv, git and npm
+# report progress there. So stderr is merged in and shown as plain text.
 function Run($exe, [string[]]$arguments) {
-  & $exe @arguments
+  $ErrorActionPreference = "Continue"
+  & $exe @arguments 2>&1 | ForEach-Object { Write-Host "$_" }
   if ($LASTEXITCODE) { throw "$exe $($arguments -join ' ') failed (exit $LASTEXITCODE)" }
 }
 
 # --force: a release tag moved to a fixed commit (0.1.0's was) would otherwise fail the fetch.
-git -C $App fetch --quiet --tags --force
+Probe git @("-C", $App, "fetch", "--quiet", "--tags", "--force") | Out-Null
 if ($LASTEXITCODE) { if (-not $Quiet) { Write-Host "Could not reach the update server; try again later." }; exit 0 }
 $latest = git -C $App tag --list "v*" --sort=-v:refname | Select-Object -First 1
 # The release this copy is on: its tag, or else the version in package.json (a copy between releases).

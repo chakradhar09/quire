@@ -22,7 +22,8 @@ if ($Stop) {
   foreach ($file in @($PidFile, (Join-Path $Data "worker.pid"))) {
     $p = Running $file
     # The app runs as npm, which starts node: stop the whole tree.
-    if ($p) { & taskkill /PID $p.Id /T /F | Out-Null }
+    # taskkill reports children that already ended on stderr, which Windows PowerShell 5.1 would make fatal.
+    if ($p) { & { $ErrorActionPreference = "Continue"; taskkill /PID $p.Id /T /F 2>&1 | Out-Null } }
     Remove-Item $file -ErrorAction SilentlyContinue
   }
   Write-Host "Quire stopped."

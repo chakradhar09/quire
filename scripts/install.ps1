@@ -42,8 +42,12 @@ $ModelEnv = @{ AI_DETECTOR = "classifier"; AI_CLASSIFIER_THRESHOLD = "0.2028"; A
 
 function Say($text) { Write-Host "==> $text" -ForegroundColor Green }
 function Warn($text) { Write-Host "  ! $text" -ForegroundColor Yellow }
+# Runs a program and stops if it fails, judged by its exit code alone. Windows PowerShell 5.1 can turn every line
+# a program writes to stderr into an error, which "Stop" makes fatal and which it prints as one: uv, git and npm
+# report progress there. So stderr is merged in and shown as plain text.
 function Run($exe, [string[]]$arguments) {
-  & $exe @arguments
+  $ErrorActionPreference = "Continue"
+  & $exe @arguments 2>&1 | ForEach-Object { Write-Host "$_" }
   if ($LASTEXITCODE) { throw "$exe $($arguments -join ' ') failed (exit $LASTEXITCODE)" }
 }
 # Runs a program only to see what it prints; its errors are discarded. Windows PowerShell 5.1 turns a program's
@@ -106,7 +110,8 @@ if ($missing.Count -and (Get-Command winget -ErrorAction SilentlyContinue)) {
   if ((Ask "  Install them now with winget? [Y/n]" "y") -match "^[yY]") {
     foreach ($id in $missing) {
       Say "Installing $id"
-      winget install --id $id --exact --silent --accept-package-agreements --accept-source-agreements
+      # Not Run: a package that fails is reported by the check below. Its stderr mustn't stop the script.
+      & { $ErrorActionPreference = "Continue"; winget install --id $id --exact --silent --accept-package-agreements --accept-source-agreements 2>&1 | ForEach-Object { Write-Host "$_" } }
     }
     # winget changed PATH for new windows; take it into this one too.
     $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
