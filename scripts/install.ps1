@@ -53,27 +53,46 @@ function Write-Plain($path, $text) { [IO.File]::WriteAllText($path, $text, (New-
 function Version($text) { if ($text -match '(\d+)\.(\d+)(\.(\d+))?') { [version]"$($Matches[1]).$($Matches[2]).$([int]$Matches[4])" } }
 
 # ---------------------------------------------------------------- What it needs
-Say "Checking for Git, Node.js and Python"
-$missing = @()
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) { $missing += "Git.Git" }
-$node = Get-Command node -ErrorAction SilentlyContinue
-if (-not $node -or (Version (node --version)) -lt [version]"22.13.0") { $missing += "OpenJS.NodeJS.LTS" }
 # Python 3.11 or 3.12: the OCR package has no build for 3.13 or later yet. The Python launcher asked for those
 # versions first, then python on PATH; kept as the executable and the arguments that pick the version.
 function Good-Python($v) { $v = Version "$v"; return $v -and $v -ge [version]"3.11.0" -and $v -lt [version]"3.13.0" }
-$pyExe = $null; $pyArgs = @()
-foreach ($candidate in @(@{ Exe = "py"; Args = @("-3.12") }, @{ Exe = "py"; Args = @("-3.11") }, @{ Exe = "python"; Args = @() })) {
-  if (Get-Command $candidate.Exe -ErrorAction SilentlyContinue) {
-    $v = & $candidate.Exe @($candidate.Args + "--version") 2>$null
-    if ($LASTEXITCODE -eq 0 -and (Good-Python $v)) { $pyExe = $candidate.Exe; $pyArgs = $candidate.Args; break }
+# What is missing, as winget package ids; also finds the Python to use ($pyExe, $pyArgs).
+function Find-Missing {
+  $found = @()
+  if (-not (Get-Command git -ErrorAction SilentlyContinue)) { $found += "Git.Git" }
+  $node = Get-Command node -ErrorAction SilentlyContinue
+  if (-not $node -or (Version (node --version)) -lt [version]"22.13.0") { $found += "OpenJS.NodeJS.LTS" }
+  $script:pyExe = $null; $script:pyArgs = @()
+  foreach ($candidate in @(@{ Exe = "py"; Args = @("-3.12") }, @{ Exe = "py"; Args = @("-3.11") }, @{ Exe = "python"; Args = @() })) {
+    if (Get-Command $candidate.Exe -ErrorAction SilentlyContinue) {
+      $v = & $candidate.Exe @($candidate.Args + "--version") 2>$null
+      if ($LASTEXITCODE -eq 0 -and (Good-Python $v)) { $script:pyExe = $candidate.Exe; $script:pyArgs = $candidate.Args; break }
+    }
+  }
+  if (-not $script:pyExe) { $found += "Python.Python.3.12" }
+  return , $found
+}
+
+Say "Checking for Git, Node.js and Python"
+$missing = Find-Missing
+if ($missing.Count -and (Get-Command winget -ErrorAction SilentlyContinue)) {
+  Warn "Quire needs: $($missing -join ', ')."
+  if ((Ask "  Install them now with winget? [Y/n]" "y") -match "^[yY]") {
+    foreach ($id in $missing) {
+      Say "Installing $id"
+      winget install --id $id --exact --silent --accept-package-agreements --accept-source-agreements
+    }
+    # winget changed PATH for new windows; take it into this one too.
+    $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+    $missing = Find-Missing
   }
 }
-if (-not $pyExe) { $missing += "Python.Python.3.12" }
-if ($missing) {
-  Warn "Quire needs: $($missing -join ', ')."
+if ($missing.Count) {
+  # return, not exit: run as `irm ... | iex`, exit would close the PowerShell window before anyone reads this.
+  Warn "Quire still needs: $($missing -join ', ')."
   Warn "Install them with:  winget install $($missing -join ' ')"
-  Warn "then open a new PowerShell window and run this installer again."
-  exit 1
+  Warn "(or from git-scm.com, nodejs.org and python.org), then open a new PowerShell window and run the installer again."
+  return
 }
 
 # ---------------------------------------------------------------- The code

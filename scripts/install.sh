@@ -25,25 +25,38 @@ ask() { # ask "question" default
   if [ "${QUIRE_YES:-}" = 1 ] || { [ ! -t 0 ] && [ ! -e /dev/tty ]; }; then echo "$2"; return; fi
   local answer; read -r -p "$1 " answer </dev/tty || true; echo "${answer:-$2}"
 }
-at_least() { # at_least "have" "want": version comparison
-  [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -1)" = "$2" ]
+# at_least "have" "want": version comparison with awk (macOS's sort has no -V before macOS 13).
+ver() { echo "$1" | awk -F. '{ printf "%d%03d%03d\n", $1, $2, $3 }'; }
+at_least() { [ "$(ver "$1")" -ge "$(ver "$2")" ]; }
+
+# Python 3.11 or 3.12: the OCR package has no build for 3.13 or later yet.
+good_python() { "$1" -c 'import sys; sys.exit(not (3, 11) <= sys.version_info[:2] < (3, 13))' 2>/dev/null; }
+# What is missing, as Homebrew formulae (a plain string: macOS's bash 3.2 trips on empty arrays under set -u);
+# also finds the Python to use ($PY).
+find_missing() {
+  missing=""
+  command -v git >/dev/null || missing="$missing git"
+  if ! command -v node >/dev/null || ! at_least "$(node --version | tr -d v)" 22.13.0; then missing="$missing node"; fi
+  PY=""
+  for candidate in python3.12 python3.11 python3 python; do
+    if command -v "$candidate" >/dev/null && good_python "$candidate"; then PY="$candidate"; break; fi
+  done
+  [ -n "$PY" ] || missing="$missing python@3.12"
 }
 
 say "Checking for Git, Node.js and Python"
-missing=()
-command -v git >/dev/null || missing+=(git)
-if ! command -v node >/dev/null || ! at_least "$(node --version | tr -d v)" 22.13.0; then missing+=("node 22.13+"); fi
-# Python 3.11 or 3.12: the OCR package has no build for 3.13 or later yet.
-good_python() { "$1" -c 'import sys; sys.exit(not (3, 11) <= sys.version_info[:2] < (3, 13))' 2>/dev/null; }
-PY=""
-for candidate in python3.12 python3.11 python3 python; do
-  if command -v "$candidate" >/dev/null && good_python "$candidate"; then PY="$candidate"; break; fi
-done
-[ -n "$PY" ] || missing+=("python 3.11 or 3.12")
-if [ ${#missing[@]} -gt 0 ]; then
-  warn "Quire needs: ${missing[*]}."
-  if [ "$(uname)" = Darwin ]; then warn "With Homebrew: brew install git node python@3.12"
-  else warn "With your package manager, e.g.: sudo apt install git nodejs python3 python3-venv (Node 22 from nodejs.org or nvm)"; fi
+find_missing
+if [ -n "$missing" ] && [ "$(uname)" = Darwin ] && command -v brew >/dev/null; then
+  warn "Quire needs:$missing."
+  case "$(ask "  Install them now with Homebrew? [Y/n]" y)" in
+    [yY]*) brew install $missing && find_missing ;;  # unquoted on purpose: one formula per word
+  esac
+fi
+if [ -n "$missing" ]; then
+  warn "Quire still needs:$missing (Node.js 22.13 or later, Python 3.11 or 3.12)."
+  if [ "$(uname)" = Darwin ]; then warn "Install Homebrew from brew.sh, then: brew install$missing"
+  else warn "With your package manager, e.g.: sudo apt install git python3.12 python3.12-venv; Node.js 22 from nodejs.org or nvm."; fi
+  warn "Then run the installer again."
   exit 1
 fi
 
