@@ -1,11 +1,11 @@
 "use client";
-// The Settings page's two parts: the Brave Search API key (saved by saveBraveKey; the page only ever holds its
-// last four characters) and the switch for installing new releases when Quire starts.
+// The Settings page's parts: the Brave Search API key (saved by saveBraveKey; the page only ever holds its
+// last four characters), the switch for installing new releases when Quire starts, and stopping Quire.
 import { useActionState, useState, useTransition } from "react";
 import { ExternalLink } from "lucide-react";
 import { Switch } from "@/components/overlays";
 import { Button, InlineAlert, TextField } from "@/components/ui";
-import { saveBraveKey, setAutoUpdate } from "../actions";
+import { saveBraveKey, setAutoUpdate, stop } from "../actions";
 
 export function SettingsForms({ masked, keyElsewhere, autoUpdate, guideUrl }: {
   masked: string; keyElsewhere: boolean; autoUpdate: boolean; guideUrl: string;
@@ -14,6 +14,8 @@ export function SettingsForms({ masked, keyElsewhere, autoUpdate, guideUrl }: {
   const [auto, setAuto] = useState(autoUpdate);
   const [, startTransition] = useTransition();
   const [replacing, setReplacing] = useState(false);
+  const [stopping, startStopping] = useTransition();
+  const [stopped, setStopped] = useState(false);
   const asking = !masked || replacing;
 
   return (
@@ -63,6 +65,25 @@ export function SettingsForms({ masked, keyElsewhere, autoUpdate, guideUrl }: {
           <Switch id="settings-auto-update" label="Install new releases automatically when Quire starts"
             checked={auto} onCheckedChange={(v) => { setAuto(v); startTransition(() => setAutoUpdate(v)); }}
             hint="Otherwise, use Update Quire from the Start menu (or quire-update) when you see the notice." />
+        </div>
+      </section>
+
+      <section aria-labelledby="stop-heading" className="rounded-lg border border-border bg-bg p-5">
+        <h2 id="stop-heading" className="text-lg">Stop Quire</h2>
+        <p className="mt-1 text-sm text-muted">
+          Quire also stops by itself a few minutes after you close its last tab. A check that is running finishes first.
+        </p>
+        <div className="mt-4">
+          {stopped ? (
+            <InlineAlert variant="success" title="Quire is stopped" live>
+              You can close this tab. To open it again, use Quire in the Start menu (or run quire).
+            </InlineAlert>
+          ) : (
+            <Button variant="secondary" loading={stopping}
+              onClick={() => startStopping(async () => { await stop(); setStopped(true); })}>
+              Stop Quire now
+            </Button>
+          )}
         </div>
       </section>
     </div>

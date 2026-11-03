@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Literata, Public_Sans, Red_Hat_Mono } from "next/font/google";
+import { KeepAlive } from "@/components/keep-alive";
 import { Providers } from "@/components/overlays";
 import { PendingDeletes } from "./pending-deletes";
 import "./globals.css";
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${publicSans.variable} ${literata.variable} ${redHatMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <Providers><PendingDeletes>{children}</PendingDeletes></Providers>
+        <KeepAlive />
       </body>
     </html>
   );

@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { paperFromField } from "@/lib/upload";
 import { braveKeyError, writeSettings } from "@/lib/settings";
+import { stopQuire } from "@/lib/alive";
 import { redirect } from "next/navigation";
 import {
   deleteDocument, moveToPaper, retryReport, setMatchExcluded, setResolution, setSourceExcluded, submitText, updateReportSettings, type ReportSettings,
@@ -37,6 +38,11 @@ export async function saveBraveKey(_prev: { error?: string; saved?: boolean }, f
   revalidatePath("/settings");
   revalidatePath("/drafts");
   return { saved: true };
+}
+
+// The Settings page's Stop button: the app and the worker, now.
+export async function stop() {
+  stopQuire({ worker: true });
 }
 
 export async function deleteDraft(id: number) {

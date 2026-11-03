@@ -97,7 +97,7 @@ The key is saved only on your PC (in the `data` folder), and the only thing sent
 
 ## Use
 
-Open **Quire** from the Start menu (or run `quire`). It starts in the background and opens in your browser at `http://127.0.0.1:3000`. Drop a file or paste your text on **Check a draft**; the check runs on its own and the report opens from **Drafts** when it is ready. **Stop Quire** (or `quire --stop`) shuts it down.
+Open **Quire** from the Start menu (or run `quire`). It starts in the background and opens in your browser at `http://127.0.0.1:3000`. Drop a file or paste your text on **Check a draft**; the check runs on its own and the report opens from **Drafts** when it is ready. Quire stops by itself a few minutes after you close its last tab; to stop it at once, use **Stop Quire now** on the Settings page, **Stop Quire** in the Start menu, or `quire --stop`.
 
 ## Updates
 
@@ -125,7 +125,7 @@ It asks before removing anything, and asks whether to keep your drafts, reports 
 
 ## How it works
 
-A Next.js app (`web/`) shows the pages and queues work in a SQLite database; a Python worker (`worker/`) reads files, runs the web searches, aligns matches and scores AI-like writing, then writes the results back. The worker starts when there is something to check and stops after five idle minutes. The full design is in [`replica/architecture.md`](replica/architecture.md) and [`DESIGN.md`](DESIGN.md).
+A Next.js app (`web/`) shows the pages and queues work in a SQLite database; a Python worker (`worker/`) reads files, runs the web searches, aligns matches and scores AI-like writing, then writes the results back. The worker starts when there is something to check and stops after five idle minutes; the app stops three minutes after its last open page stops checking in (`web/lib/alive.ts`). The full design is in [`replica/architecture.md`](replica/architecture.md) and [`DESIGN.md`](DESIGN.md).
 
 ## Development
 
