@@ -1,39 +1,73 @@
-# Publishing a release: push a tag like v0.1.4 (see RELEASING.md). CI runs on the tagged commit first; then the
-# tag is checked against web/package.json and the GitHub release is created, which is what the installer, the
-# updaters and the app's update notice look for. A release that already exists (made by hand) is left as it is.
+# Publishes a release (see RELEASING.md), which is what the installer, the updaters and the app's update notice
+# look for. Two ways in:
+#  - A new version on main: once CI passes on a push to main whose web/package.json version has no tag yet, this
+#    creates the v<version> tag on that commit and the release. Nothing happens for a version already released.
+#  - A v* tag pushed by hand: CI runs on the tagged commit, the tag is checked against web/package.json, and the
+#    release is created.
+# The text is release-notes/v<version>.md when there is one, else notes made from the commits. A release that
+# already exists (made by hand) is left as it is.
 name: Release
 
 on:
   push:
     tags: ["v*"]  # not model-v*: the model is released by hand
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   ci:
+    if: github.event_name == 'push'
     uses: ./.github/workflows/ci.yml
 
   release:
     name: Publish the release
     needs: ci
+    # needs is skipped for workflow_run (CI already ran); always() lets this run then.
+    if: >-
+      always() && (
+        (github.event_name == 'push' && needs.ci.result == 'success') ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.event == 'push')
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
-      - name: The tag matches the app's version
-        run: |
-          want="v$(jq -r .version web/package.json)"
-          if [ "$GITHUB_REF_NAME" != "$want" ]; then
-            echo "::error::The tag is $GITHUB_REF_NAME but web/package.json says $want (npm version in web/ sets it)"
-            exit 1
-          fi
-      - name: Publish
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      - name: Which version
+        id: version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            echo "The release $GITHUB_REF_NAME already exists; leaving it as it is."
-          else
-            gh release create "$GITHUB_REF_NAME" --verify-tag --title "Quire ${GITHUB_REF_NAME#v}" --generate-notes
+          tag="v$(jq -r .version web/package.json)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF_NAME" != "$tag" ]; then
+            echo "::error::The tag is $GITHUB_REF_NAME but web/package.json says $tag (npm version in web/ sets it)"
+            exit 1
           fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "The release $tag already exists; nothing to publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = workflow_run ] && git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "::warning::The tag $tag exists without a release; push it again or publish the release by hand."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          notes=(--generate-notes)
+          if [ -f "release-notes/$TAG.md" ]; then notes=(--notes-file "release-notes/$TAG.md"); fi
+          # --target makes the tag on the commit CI checked when it doesn't exist yet.
+          gh release create "$TAG" --target "$(git rev-parse HEAD)" --title "Quire ${TAG#v}" "${notes[@]}"
+          echo "Published $TAG: $(gh release view "$TAG" --json url --jq .url)"

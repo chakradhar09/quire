@@ -9,8 +9,8 @@ The installer installs the newest `v*` tag, `update` moves to it, and the app's 
    CI's `npm ci` on both Node.js versions also checks that the lockfile installs the way the installer does. 0.1.0 shipped a `package-lock.json` missing `@emnapi/core` and `@emnapi/runtime`; no npm would `ci` it, so every install stopped at "Building the app" (a dev copy with `node_modules` already in place doesn't notice). Fix one with `npx -y npm@10 install --package-lock-only` and commit the result.
 
    (0.1.1 fixed it. The installer and the updaters fetch tags with `--force`, so a moved tag would also reach existing installs, but prefer a new version: a moved tag doesn't show the update notice, because `package.json`'s version is unchanged.)
-3. Commit, then `git tag v0.2.0` and `git push origin main v0.2.0`.
-4. The tag starts `.github/workflows/release.yml`: CI again on the tagged commit, a check that the tag matches `web/package.json`, then the GitHub release, with notes made from the commits. Publishing it is what makes the update notice appear. Edit the release on GitHub to put a few lines on what changed at the top. (A release you made by hand before the workflow finished is left as it is.)
+3. Write what changed for people using Quire in `release-notes/v0.2.0.md` (see the earlier ones). Without that file the release gets notes made from the commit titles.
+4. Commit and push to `main`. When CI passes on that commit, `.github/workflows/release.yml` sees a version with no tag yet, creates the `v0.2.0` tag on the commit and publishes the GitHub release with those notes. Publishing it is what makes the update notice appear. (Pushing a `v0.2.0` tag yourself works too: CI runs on it, the tag is checked against `package.json`, and the release is published. A release you made by hand is left as it is.)
 5. If the release changes the PyTorch version (`TorchVersion` in `scripts/install.ps1`, `TORCH_VERSION` in `scripts/install.sh`), say in the notes to run the installer again: `update` does not reinstall PyTorch.
 
 ## The AI-writing model
