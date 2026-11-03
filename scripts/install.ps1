@@ -236,9 +236,9 @@ if (Test-Path (Join-Path $App "scripts\uninstall.ps1")) {
     InstallLocation = $Dir
     URLInfoAbout = "https://github.com/$Repo"
     UninstallString = "`"$((Get-Command powershell).Source)`" -NoProfile -ExecutionPolicy Bypass -File `"$(Join-Path $App 'scripts\uninstall.ps1')`" -Pause"
-}
-foreach ($k in $entry.Keys) { Set-ItemProperty $key $k $entry[$k] }
-foreach ($k in "NoModify", "NoRepair") { Set-ItemProperty $key $k 1 -Type DWord }
+  }
+  foreach ($k in $entry.Keys) { Set-ItemProperty $key $k $entry[$k] }
+  foreach ($k in "NoModify", "NoRepair") { Set-ItemProperty $key $k 1 -Type DWord }
 }
 
 Say "Quire is installed. Open it from the Start menu, or run: $(Join-Path $App 'scripts\quire.ps1')"
