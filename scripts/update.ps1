@@ -19,8 +19,16 @@ function Probe($exe, [string[]]$arguments) { $ErrorActionPreference = "Continue"
 # report progress there. So stderr is merged in and shown as plain text.
 function Run($exe, [string[]]$arguments) {
   $ErrorActionPreference = "Continue"
-  & $exe @arguments 2>&1 | ForEach-Object { Write-Host "$_" }
+  Utf8 { & $exe @arguments 2>&1 | ForEach-Object { Write-Host "$_" } }
   if ($LASTEXITCODE) { throw "$exe $($arguments -join ' ') failed (exit $LASTEXITCODE)" }
+}
+# Runs a block with programs' output read as UTF-8, which is what npm, uv and git write. Otherwise Windows
+# PowerShell reads it in the console's old code page (437), and the box-drawing tree that next build prints comes
+# out as runs of Greek and accented letters. The window's own setting is put back afterwards.
+function Utf8([scriptblock]$block) {
+  $before = [Console]::OutputEncoding
+  try { [Console]::OutputEncoding = New-Object Text.UTF8Encoding $false } catch { }
+  try { & $block } finally { try { [Console]::OutputEncoding = $before } catch { } }
 }
 
 # --force: a release tag moved to a fixed commit (0.1.0's was) would otherwise fail the fetch.

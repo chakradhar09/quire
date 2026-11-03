@@ -51,8 +51,16 @@ function Warn($text) { Write-Host "  ! $text" -ForegroundColor Yellow }
 # report progress there. So stderr is merged in and shown as plain text.
 function Run($exe, [string[]]$arguments) {
   $ErrorActionPreference = "Continue"
-  & $exe @arguments 2>&1 | ForEach-Object { Write-Host "$_" }
+  Utf8 { & $exe @arguments 2>&1 | ForEach-Object { Write-Host "$_" } }
   if ($LASTEXITCODE) { throw "$exe $($arguments -join ' ') failed (exit $LASTEXITCODE)" }
+}
+# Runs a block with programs' output read as UTF-8, which is what npm, uv and git write. Otherwise Windows
+# PowerShell reads it in the console's old code page (437), and the box-drawing tree that next build prints comes
+# out as runs of Greek and accented letters. The window's own setting is put back afterwards.
+function Utf8([scriptblock]$block) {
+  $before = [Console]::OutputEncoding
+  try { [Console]::OutputEncoding = New-Object Text.UTF8Encoding $false } catch { }
+  try { & $block } finally { try { [Console]::OutputEncoding = $before } catch { } }
 }
 # Runs a program only to see what it prints; its errors are discarded. Windows PowerShell 5.1 turns a program's
 # stderr into an error that $ErrorActionPreference = "Stop" makes fatal (py -3.12 with no 3.12, git describe).
@@ -115,7 +123,7 @@ if ($missing.Count -and (Get-Command winget -ErrorAction SilentlyContinue)) {
     foreach ($id in $missing) {
       Say "Installing $id"
       # Not Run: a package that fails is reported by the check below. Its stderr mustn't stop the script.
-      & { $ErrorActionPreference = "Continue"; winget install --id $id --exact --silent --accept-package-agreements --accept-source-agreements 2>&1 | ForEach-Object { Write-Host "$_" } }
+      Utf8 { $ErrorActionPreference = "Continue"; winget install --id $id --exact --silent --accept-package-agreements --accept-source-agreements 2>&1 | ForEach-Object { Write-Host "$_" } }
     }
     # winget changed PATH for new windows; take it into this one too.
     $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")

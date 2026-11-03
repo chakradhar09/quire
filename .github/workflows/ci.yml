@@ -130,9 +130,15 @@ jobs:
             foreach ($e in $errors) { Write-Host "::error file=$($f.Name),line=$($e.Extent.StartLineNumber)::$($e.Message)"; $bad = $true }
           }
           if ($bad) { exit 1 }
-      - name: Install this commit (with the AI-writing model)
+      - name: Install this commit (with the AI-writing model), in the console code page Windows PCs use
         run: |
+          # Runners use UTF-8; users' consoles are in code page 437, where the installer once garbled npm's output.
+          [Console]::OutputEncoding = [Text.Encoding]::GetEncoding(437)
+          Start-Transcript "$env:RUNNER_TEMP\install.log" | Out-Null
           & .\scripts\install.ps1 -Dir "$env:RUNNER_TEMP\Quire" -Source "$env:GITHUB_WORKSPACE" -Ref "$env:GITHUB_SHA" -Cpu -Yes -BraveKey ci-placeholder
+          Stop-Transcript | Out-Null
+          $tree = "$([char]0x2514) $([char]0x25CB) /welcome"  # the last line of next build's list of pages
+          if (-not (Select-String -Path "$env:RUNNER_TEMP\install.log" -SimpleMatch $tree -Quiet)) { Write-Host "::error::next build's output came through garbled"; exit 1 }
           if (-not (Test-Path "$env:RUNNER_TEMP\Quire\app\web\.next\BUILD_ID")) { Write-Host "::error::The install didn't finish"; exit 1 }
           if (-not (Test-Path "$env:RUNNER_TEMP\Quire\app\data\calibration\classifier\model\model.safetensors")) { Write-Host "::error::The AI-writing model wasn't installed"; exit 1 }
       - name: Open, upload, stop, uninstall
