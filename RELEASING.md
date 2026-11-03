@@ -6,7 +6,7 @@ The installer installs the newest `v*` tag, `update` moves to it, and the app's 
 
 1. In `web/`: `npm version 0.2.0 --no-git-tag-version` (sets `package.json` and `package-lock.json`).
 2. Run the checks: `npm test`, `npx tsc --noEmit`, `npx eslint app components lib` and `npm run build` in `web/`; `python -m unittest discover -p "*_test.py"` in `worker/`. The production build catches things the dev server doesn't.
-   Then check the lockfile installs with **Node.js 22's npm (10.x)**, which is what the installer gives people: in a fresh copy of `web/`, `npx -y npm@10 ci`. A `package-lock.json` written by npm 11 (Node.js 24) can leave out entries npm 10 needs (0.1.0 lacked `@emnapi/core` and `@emnapi/runtime`), and then every install stops at "Building the app". Fix it with `npx -y npm@10 install --package-lock-only` and commit the result.
+   Then check that the lockfile installs the way the installer does: in a fresh copy of `web/` (no `node_modules`), `npm ci`, and `npx -y npm@10 ci` for Node.js 22's npm. 0.1.0 shipped a `package-lock.json` missing `@emnapi/core` and `@emnapi/runtime`; no npm would `ci` it, so every install stopped at "Building the app" (a dev copy with `node_modules` already in place doesn't notice). Fix one with `npx -y npm@10 install --package-lock-only` and commit the result.
 3. Commit, then `git tag v0.2.0` and `git push origin main v0.2.0`.
 4. On GitHub, **Releases → Draft a new release** from the tag, with a few lines on what changed. Publishing it is what makes the update notice appear.
 5. If the release changes the PyTorch version (`TorchVersion` in `scripts/install.ps1`, `TORCH_VERSION` in `scripts/install.sh`), say in the notes to run the installer again: `update` does not reinstall PyTorch.

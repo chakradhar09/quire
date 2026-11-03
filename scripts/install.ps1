@@ -209,7 +209,8 @@ if (-not $NoShortcuts) {
     @{ Path = (Join-Path $menu "Uninstall Quire.lnk"); Script = "uninstall.ps1"; Args = " -Pause"; Note = "Remove Quire from this PC" },
     @{ Path = (Join-Path ([Environment]::GetFolderPath("Desktop")) "Quire.lnk"); Script = "quire.ps1"; Args = ""; Note = "Open Quire" }
   )
-  foreach ($l in $links) {
+  # This installer comes from main; a release older than uninstall.ps1 (0.1.0) gets no Uninstall shortcut.
+  foreach ($l in $links | Where-Object { Test-Path (Join-Path $App "scripts\$($_.Script)") }) {
     $s = $shell.CreateShortcut($l.Path)
     $s.TargetPath = $ps
     $hidden = if ($l.Script -eq "quire.ps1") { "-WindowStyle Hidden " } else { "" }
@@ -222,21 +223,24 @@ if (-not $NoShortcuts) {
 }
 
 # ---------------------------------------------------------------- Settings > Apps
-# Listed there for this user only (no admin rights); its Uninstall button runs scripts\uninstall.ps1.
+# Listed there for this user only (no admin rights); its Uninstall button runs scripts\uninstall.ps1, which
+# releases before 0.1.1 don't have.
 $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Quire"
-if (-not (Test-Path $key)) { New-Item $key -Force | Out-Null }
-$entry = [ordered]@{
-  DisplayName = "Quire"
-  DisplayVersion = (Get-Content (Join-Path $App "web\package.json") -Raw | ConvertFrom-Json).version
-  Publisher = "Quire (open source)"
-  DisplayIcon = (Join-Path $App "scripts\quire.ico")
-  InstallLocation = $Dir
-  URLInfoAbout = "https://github.com/$Repo"
-  UninstallString = "`"$((Get-Command powershell).Source)`" -NoProfile -ExecutionPolicy Bypass -File `"$(Join-Path $App 'scripts\uninstall.ps1')`" -Pause"
+if (Test-Path (Join-Path $App "scripts\uninstall.ps1")) {
+  if (-not (Test-Path $key)) { New-Item $key -Force | Out-Null }
+  $entry = [ordered]@{
+    DisplayName = "Quire"
+    DisplayVersion = (Get-Content (Join-Path $App "web\package.json") -Raw | ConvertFrom-Json).version
+    Publisher = "Quire (open source)"
+    DisplayIcon = (Join-Path $App "scripts\quire.ico")
+    InstallLocation = $Dir
+    URLInfoAbout = "https://github.com/$Repo"
+    UninstallString = "`"$((Get-Command powershell).Source)`" -NoProfile -ExecutionPolicy Bypass -File `"$(Join-Path $App 'scripts\uninstall.ps1')`" -Pause"
 }
 foreach ($k in $entry.Keys) { Set-ItemProperty $key $k $entry[$k] }
 foreach ($k in "NoModify", "NoRepair") { Set-ItemProperty $key $k 1 -Type DWord }
+}
 
 Say "Quire is installed. Open it from the Start menu, or run: $(Join-Path $App 'scripts\quire.ps1')"
-Write-Host "  To remove it: Uninstall Quire in the Start menu, or Settings > Apps."
+if (Test-Path $key) { Write-Host "  To remove it: Uninstall Quire in the Start menu, or Settings > Apps." }
 if (-not $Yes -and (Ask "  Open Quire now? [Y/n]" "y") -match "^[yY]") { & (Join-Path $App "scripts\quire.ps1") }

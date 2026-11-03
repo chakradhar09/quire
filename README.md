@@ -73,7 +73,7 @@ The similarity check also needs a **Brave Search API key**, which you add once o
 - *Python 3.13 or 3.14 is installed but Quire wants 3.12*: say yes when the installer offers Python 3.12; both can stay, and Quire uses 3.12.
 - *"can't create virtual environments"* (Debian, Ubuntu): your Python lacks its `venv` part. Say yes to the private Python 3.12, or install the package it names (e.g. `sudo apt install python3.12-venv`) and run the installer again.
 - *It stops partway (a download failed)*: run the same line again. It picks up where it left off, and your drafts are never touched.
-- *"npm ci can only install packages when your package.json and package-lock.json are in sync"* at **Building the app**: Quire 0.1.0 had this bug with Node.js 22. Run the installer again: it moves the install to the newest release, which fixes it.
+- *"npm ci can only install packages when your package.json and package-lock.json are in sync"* at **Building the app**: Quire 0.1.0 had this bug (its lockfile was out of date). Run the installer again: it moves the install to the newest release, which fixes it.
 - Anything else: [open an issue](https://github.com/chakradhar09/quire/issues) with the last lines the installer printed.
 
 ## Getting a Brave Search API key
