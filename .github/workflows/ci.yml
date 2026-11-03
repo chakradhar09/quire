@@ -1,0 +1,139 @@
+# Checks every push and pull request: the app (tests, types, lint, production build) on the Node.js versions the
+# installer accepts, the worker's tests, the scripts' syntax, and a real install, run and uninstall on Linux and
+# on Windows (Windows PowerShell 5.1, what users have). Release runs it before publishing a release.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+  TORCH_VERSION: 2.14.1  # TORCH_VERSION in scripts/install.sh
+
+jobs:
+  web:
+    name: App (Node.js ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22 ships npm 10 and 24 npm 11: 0.1.0's lockfile installed with neither.
+        node: [22, 24]
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - name: Types
+        run: npx next typegen && npx tsc --noEmit
+      - run: npx eslint app components lib
+      - run: npm run build
+
+  worker:
+    name: Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: worker/requirements*.txt
+      - name: Packages
+        run: |
+          pip install "torch==$TORCH_VERSION" --index-url https://download.pytorch.org/whl/cpu
+          pip install -r worker/requirements-calibration.txt
+      - name: Tests
+        working-directory: worker
+        run: python -m unittest discover -p "*_test.py"
+
+  scripts:
+    name: Scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: for f in scripts/*.sh .github/scripts/*.sh; do bash -n "$f"; done
+      - name: ShellCheck
+        run: shellcheck --severity=error scripts/*.sh .github/scripts/*.sh
+
+  install-linux:
+    name: Install, run and uninstall (Linux)
+    needs: [web, worker, scripts]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install this commit
+        env:
+          QUIRE_DIR: ${{ runner.temp }}/quire
+          QUIRE_SOURCE: ${{ github.workspace }}
+          QUIRE_REF: ${{ github.sha }}
+          QUIRE_YES: 1
+          QUIRE_CPU: 1
+          QUIRE_NO_MODEL: 1
+          BRAVE_API_KEY: ci-placeholder
+        run: bash scripts/install.sh
+      - name: Open, upload, stop, uninstall
+        run: bash .github/scripts/smoke.sh "${{ runner.temp }}/quire"
+
+  install-windows:
+    name: Install, run and uninstall (Windows)
+    needs: [web, worker, scripts]
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: powershell  # Windows PowerShell 5.1, not pwsh: what the installer runs in
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: PowerShell syntax
+        run: |
+          $bad = $false
+          foreach ($f in Get-ChildItem scripts\*.ps1, .github\scripts\*.ps1) {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$errors) | Out-Null
+            foreach ($e in $errors) { Write-Host "::error file=$($f.Name),line=$($e.Extent.StartLineNumber)::$($e.Message)"; $bad = $true }
+          }
+          if ($bad) { exit 1 }
+      - name: Install this commit (with the AI-writing model)
+        run: |
+          & .\scripts\install.ps1 -Dir "$env:RUNNER_TEMP\Quire" -Source "$env:GITHUB_WORKSPACE" -Ref "$env:GITHUB_SHA" -Cpu -Yes -BraveKey ci-placeholder
+          if (-not (Test-Path "$env:RUNNER_TEMP\Quire\app\web\.next\BUILD_ID")) { Write-Host "::error::The install didn't finish"; exit 1 }
+          if (-not (Test-Path "$env:RUNNER_TEMP\Quire\app\data\calibration\classifier\model\model.safetensors")) { Write-Host "::error::The AI-writing model wasn't installed"; exit 1 }
+      - name: Open, upload, stop, uninstall
+        run: .\.github\scripts\smoke.ps1 -Dir "$env:RUNNER_TEMP\Quire"

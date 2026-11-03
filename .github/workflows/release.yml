@@ -1,0 +1,39 @@
+# Publishing a release: push a tag like v0.1.4 (see RELEASING.md). CI runs on the tagged commit first; then the
+# tag is checked against web/package.json and the GitHub release is created, which is what the installer, the
+# updaters and the app's update notice look for. A release that already exists (made by hand) is left as it is.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]  # not model-v*: the model is released by hand
+
+permissions:
+  contents: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Publish the release
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: The tag matches the app's version
+        run: |
+          want="v$(jq -r .version web/package.json)"
+          if [ "$GITHUB_REF_NAME" != "$want" ]; then
+            echo "::error::The tag is $GITHUB_REF_NAME but web/package.json says $want (npm version in web/ sets it)"
+            exit 1
+          fi
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "The release $GITHUB_REF_NAME already exists; leaving it as it is."
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --title "Quire ${GITHUB_REF_NAME#v}" --generate-notes
+          fi

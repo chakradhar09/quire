@@ -64,4 +64,4 @@ if (-not (App-Running)) {
     try { Invoke-WebRequest $Url -UseBasicParsing -TimeoutSec 2 | Out-Null; break } catch { Start-Sleep -Seconds 1 }
   }
 }
-Start-Process $Url
+if (-not $env:QUIRE_NO_BROWSER) { Start-Process $Url }  # QUIRE_NO_BROWSER: tests

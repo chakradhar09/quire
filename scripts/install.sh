@@ -7,8 +7,9 @@
 # folder (default ~/.quire): the code in app/, your drafts and the database in app/data/. Run it again to repair
 # an install; run `quire-update` to update and `quire-uninstall` to remove it.
 #
-# Options (environment variables): QUIRE_DIR, QUIRE_SOURCE (git URL or folder), BRAVE_API_KEY, QUIRE_CPU=1 (CPU
-# PyTorch even with an NVIDIA GPU), QUIRE_NO_MODEL=1, QUIRE_YES=1 (accept every default).
+# Options (environment variables): QUIRE_DIR, QUIRE_SOURCE (git URL or folder), QUIRE_REF (a branch, tag or commit
+# instead of the newest release: for testing), BRAVE_API_KEY, QUIRE_CPU=1 (CPU PyTorch even with an NVIDIA GPU),
+# QUIRE_NO_MODEL=1, QUIRE_YES=1 (accept every default).
 set -euo pipefail
 # Next.js reports anonymous usage to Vercel by default; Quire sends nothing but its searches and update check.
 export NEXT_TELEMETRY_DISABLED=1
@@ -169,6 +170,11 @@ else
   git clone --quiet "$SOURCE" "$APP"
   tag="$(git -C "$APP" tag --list 'v*' --sort=-v:refname | head -1)"
   if [ -n "$tag" ]; then git -C "$APP" checkout --quiet "$tag"; say "Using release $tag"; fi
+fi
+if [ -n "${QUIRE_REF:-}" ]; then
+  git -C "$APP" fetch --quiet origin "$QUIRE_REF" 2>/dev/null || true
+  git -C "$APP" -c core.fileMode=false checkout --quiet "$QUIRE_REF" 2>/dev/null || git -C "$APP" -c core.fileMode=false checkout --quiet FETCH_HEAD
+  say "Using $QUIRE_REF"
 fi
 # The scripts are made executable below. Git must not count that as a local change, or updating to a release
 # that changes them stops with "Your local changes would be overwritten" (the first 0.1.0's update.sh did).

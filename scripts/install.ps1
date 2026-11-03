@@ -13,6 +13,7 @@
 
 .PARAMETER Dir         Where to install (default %LOCALAPPDATA%\Quire).
 .PARAMETER Source      Git URL or local folder to install from (default the GitHub repository).
+.PARAMETER Ref         A branch, tag or commit to install instead of the newest release (for testing).
 .PARAMETER BraveKey    Brave Search API key for the similarity check (asked for when omitted; it can also be added
                        later on Quire's Settings page).
 .PARAMETER Cpu         Install the CPU build of PyTorch even when an NVIDIA GPU is present.
@@ -23,6 +24,7 @@
 param(
   [string]$Dir = (Join-Path $env:LOCALAPPDATA "Quire"),
   [string]$Source = "https://github.com/chakradhar09/quire.git",
+  [string]$Ref,
   [string]$BraveKey,
   [switch]$Cpu,
   [switch]$NoModel,
@@ -178,6 +180,13 @@ if (Test-Path (Join-Path $App ".git")) {
   Run git @("clone", "--quiet", $Source, $App)
   $tag = git -C $App tag --list "v*" --sort=-v:refname | Select-Object -First 1
   if ($tag) { Run git @("-C", $App, "checkout", "--quiet", $tag); Say "Using release $tag" }
+}
+
+if ($Ref) {
+  Probe git @("-C", $App, "fetch", "--quiet", "origin", $Ref) | Out-Null
+  Probe git @("-C", $App, "checkout", "--quiet", $Ref) | Out-Null
+  if ($LASTEXITCODE) { Run git @("-C", $App, "checkout", "--quiet", "FETCH_HEAD") }
+  Say "Using $Ref"
 }
 
 # ---------------------------------------------------------------- The worker (Python)
