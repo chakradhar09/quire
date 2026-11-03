@@ -133,12 +133,13 @@ fi
 mkdir -p "$DIR"
 if [ -d "$APP/.git" ]; then
   say "Quire is already in $APP; repairing it in place"
-  # A copy on a release moves to the newest one, so a release that can't install is repaired by the next
-  # (a copy between releases, a developer's, is left where it is). Your drafts (app/data) are not in Git.
-  if current="$(git -C "$APP" describe --tags --exact-match --match "v*" 2>/dev/null)" && git -C "$APP" fetch --quiet --tags 2>/dev/null; then
+  # A copy on a release moves to the newest one, so a release that can't install is repaired by the next, or by
+  # its tag moved to a fixed commit (--force takes the moved tag: 0.1.0's was). A copy between releases, a
+  # developer's, is left where it is. Your drafts (app/data) are not in Git.
+  if current="$(git -C "$APP" describe --tags --exact-match --match "v*" 2>/dev/null)" && git -C "$APP" fetch --quiet --tags --force 2>/dev/null; then
     tag="$(git -C "$APP" tag --list 'v*' --sort=-v:refname | head -1)"
-    if [ -n "$tag" ] && [ "$tag" != "$current" ] && at_least "${tag#v}" "${current#v}"; then
-      if git -C "$APP" -c core.fileMode=false checkout --quiet "$tag"; then say "Moved from release $current to $tag"
+    if [ -n "$tag" ] && [ "$(git -C "$APP" rev-parse "$tag^{commit}")" != "$(git -C "$APP" rev-parse HEAD)" ] && at_least "${tag#v}" "${current#v}"; then
+      if git -C "$APP" -c core.fileMode=false checkout --quiet "$tag"; then say "Moved from release $current to the current $tag"
       else warn "Could not move to $tag; repairing $current instead."; fi
     fi
   fi
@@ -149,7 +150,7 @@ else
   if [ -n "$tag" ]; then git -C "$APP" checkout --quiet "$tag"; say "Using release $tag"; fi
 fi
 # The scripts are made executable below. Git must not count that as a local change, or updating to a release
-# that changes them stops with "Your local changes would be overwritten" (Quire 0.1.0's update.sh did).
+# that changes them stops with "Your local changes would be overwritten" (the first 0.1.0's update.sh did).
 git -C "$APP" config core.fileMode false
 
 say "Setting up the worker's Python environment (this downloads PyTorch, a few hundred MB to 2.5 GB)"

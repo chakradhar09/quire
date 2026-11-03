@@ -9,7 +9,8 @@ if [ -d "$APP/../node/bin" ]; then PATH="$APP/../node/bin:$PATH"; fi
 QUIET=0; FORCE=0
 for a in "$@"; do case "$a" in --quiet) QUIET=1 ;; --force) FORCE=1 ;; esac; done
 
-if ! git -C "$APP" fetch --quiet --tags; then
+# --force: a release tag moved to a fixed commit (0.1.0's was) would otherwise fail the fetch.
+if ! git -C "$APP" fetch --quiet --tags --force; then
   [ "$QUIET" = 1 ] || echo "Could not reach the update server; try again later."; exit 0
 fi
 latest="$(git -C "$APP" tag --list 'v*' --sort=-v:refname | head -1)"

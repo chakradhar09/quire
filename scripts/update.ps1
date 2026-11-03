@@ -17,7 +17,8 @@ function Run($exe, [string[]]$arguments) {
   if ($LASTEXITCODE) { throw "$exe $($arguments -join ' ') failed (exit $LASTEXITCODE)" }
 }
 
-git -C $App fetch --quiet --tags
+# --force: a release tag moved to a fixed commit (0.1.0's was) would otherwise fail the fetch.
+git -C $App fetch --quiet --tags --force
 if ($LASTEXITCODE) { if (-not $Quiet) { Write-Host "Could not reach the update server; try again later." }; exit 0 }
 $latest = git -C $App tag --list "v*" --sort=-v:refname | Select-Object -First 1
 # The release this copy is on: its tag, or else the version in package.json (a copy between releases).

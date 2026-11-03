@@ -110,15 +110,17 @@ $App = Join-Path $Dir "app"
 New-Item -ItemType Directory -Force $Dir | Out-Null
 if (Test-Path (Join-Path $App ".git")) {
   Say "Quire is already in $App; repairing it in place"
-  # A copy on a release moves to the newest one, so a release that can't install is repaired by the next
-  # (a copy between releases, a developer's, is left where it is). Your drafts (app\data) are not in Git.
+  # A copy on a release moves to the newest one, so a release that can't install is repaired by the next, or by
+  # its tag moved to a fixed commit (--force takes the moved tag: 0.1.0's was). A copy between releases, a
+  # developer's, is left where it is. Your drafts (app\data) are not in Git.
   $current = Probe git @("-C", $App, "describe", "--tags", "--exact-match", "--match", "v*")
   if ($current -and $current -match '^v\d') {
-    Probe git @("-C", $App, "fetch", "--quiet", "--tags") | Out-Null
+    Probe git @("-C", $App, "fetch", "--quiet", "--tags", "--force") | Out-Null
     $tag = git -C $App tag --list "v*" --sort=-v:refname | Select-Object -First 1
-    if ($tag -and $tag -ne $current -and (Version $tag) -gt (Version $current)) {
+    $moved = $tag -and (Probe git @("-C", $App, "rev-parse", "$tag^{commit}")) -ne (Probe git @("-C", $App, "rev-parse", "HEAD"))
+    if ($moved -and (Version $tag) -ge (Version $current)) {
       Probe git @("-C", $App, "checkout", "--quiet", $tag) | Out-Null
-      if ($LASTEXITCODE) { Warn "Could not move to $tag; repairing $current instead." } else { Say "Moved from release $current to $tag" }
+      if ($LASTEXITCODE) { Warn "Could not move to $tag; repairing $current instead." } else { Say "Moved from release $current to the current $tag" }
     }
   }
 } else {
@@ -209,7 +211,7 @@ if (-not $NoShortcuts) {
     @{ Path = (Join-Path $menu "Uninstall Quire.lnk"); Script = "uninstall.ps1"; Args = " -Pause"; Note = "Remove Quire from this PC" },
     @{ Path = (Join-Path ([Environment]::GetFolderPath("Desktop")) "Quire.lnk"); Script = "quire.ps1"; Args = ""; Note = "Open Quire" }
   )
-  # This installer comes from main; a release older than uninstall.ps1 (0.1.0) gets no Uninstall shortcut.
+  # This installer comes from main; a release older than uninstall.ps1 gets no Uninstall shortcut.
   foreach ($l in $links | Where-Object { Test-Path (Join-Path $App "scripts\$($_.Script)") }) {
     $s = $shell.CreateShortcut($l.Path)
     $s.TargetPath = $ps
@@ -224,7 +226,7 @@ if (-not $NoShortcuts) {
 
 # ---------------------------------------------------------------- Settings > Apps
 # Listed there for this user only (no admin rights); its Uninstall button runs scripts\uninstall.ps1, which
-# releases before 0.1.1 don't have.
+# the first build of 0.1.0 didn't have.
 $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Quire"
 if (Test-Path (Join-Path $App "scripts\uninstall.ps1")) {
   if (-not (Test-Path $key)) { New-Item $key -Force | Out-Null }
