@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Removes Quire from macOS or Linux: stops it, then deletes what the installer made: the app, the private Python
-# and Node.js (if it installed them), the quire, quire-update and quire-uninstall commands and the desktop entry.
+# and Node.js (if it installed them), uv, an unfinished model download, the quire, quire-update and
+# quire-uninstall commands and the desktop entry.
 # First it asks whether to keep your drafts, reports and settings (app/data); kept, they move to ~/Quire-data-<date>.
 # Git, Homebrew and anything else installed system-wide stay.
 #
@@ -71,7 +72,7 @@ main() {
 
   say "Deleting the app"
   # Only what the installer made, never the whole folder: QUIRE_DIR may have been one with other things in it.
-  rm -rf "$app" "$dir/node" "$dir/python" "$dir/uv"
+  rm -rf "$app" "$dir/node" "$dir/python" "$dir/uv" "$dir/download"
   rmdir "$dir" 2>/dev/null || warn "$dir still has other files in it; they were left alone."
   say "Quire is removed."
 }

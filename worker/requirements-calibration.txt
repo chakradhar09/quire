@@ -1,0 +1,5 @@
+# For training and evaluating the AI-writing classifier (worker/calibration/, see MODEL.md), on top of
+# requirements.txt. The installer leaves these out: Quire itself doesn't use them.
+-r requirements.txt
+# calibration/classifier_data.py and eval_classifier.py read Ghostbuster's parquet files
+pyarrow==25.0.1

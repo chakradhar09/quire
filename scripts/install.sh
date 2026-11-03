@@ -59,6 +59,13 @@ find_missing() {
   [ -n "$PY" ] || missing="$missing python@3.12"
 }
 
+# uv (astral.sh) installs Python packages several at a time, far faster than pip, and provides the private
+# Python below. It lives in $DIR/uv; pip is the fallback when it can't be downloaded.
+get_uv() {
+  [ -x "$DIR/uv/uv" ] || { mkdir -p "$DIR" && curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$DIR/uv" sh -s -- --quiet; } || true
+  [ -x "$DIR/uv/uv" ]
+}
+
 say "Checking for Git, Node.js and Python"
 find_missing
 if [ -n "$missing" ] && [ "$(uname)" = Darwin ] && command -v brew >/dev/null; then
@@ -78,9 +85,7 @@ if [ -z "$PY" ]; then
   fi
   case "$(ask "  Install a private Python 3.12 just for Quire, in $DIR? [Y/n]" y)" in
     [yY]*)
-      mkdir -p "$DIR"
-      [ -x "$DIR/uv/uv" ] || curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$DIR/uv" sh -s -- --quiet
-      UV_PYTHON_INSTALL_DIR="$DIR/python" "$DIR/uv/uv" python install --no-bin 3.12 && find_missing ;;
+      get_uv && UV_PYTHON_INSTALL_DIR="$DIR/python" "$DIR/uv/uv" python install --no-bin 3.12 && find_missing ;;
   esac
 fi
 # The same for Node.js: the official 22.x build from nodejs.org, checked against its published SHA-256, in $DIR/node.
@@ -131,6 +136,20 @@ if [ -n "$missing" ]; then
 fi
 
 mkdir -p "$DIR"
+# The AI-writing model (about 575 MB) downloads in the background while the rest installs, into $DIR/download
+# until it is unpacked; a download that was cut off carries on where it stopped (-C -) the next time.
+MODEL_DIR="$APP/data/calibration/classifier/model"
+MODEL_ZIP="$DIR/download/${MODEL_URL##*/}"
+model_pid=""
+stop_model() { if [ -n "$model_pid" ]; then pkill -P "$model_pid" 2>/dev/null || true; kill "$model_pid" 2>/dev/null || true; fi; }
+if [ "${QUIRE_NO_MODEL:-}" != 1 ] && [ ! -f "$MODEL_DIR/model.safetensors" ] && [ ! -f "$MODEL_ZIP" ]; then
+  mkdir -p "$DIR/download"
+  say "Downloading the AI-writing model (about 575 MB) in the background"
+  { curl -fsSL --retry 3 -C - -o "$MODEL_ZIP.part" "$MODEL_URL" && mv "$MODEL_ZIP.part" "$MODEL_ZIP"; } 2>"$DIR/download/model.log" &
+  model_pid=$!
+  trap stop_model EXIT
+fi
+
 if [ -d "$APP/.git" ]; then
   say "Quire is already in $APP; repairing it in place"
   # A copy on a release moves to the newest one, so a release that can't install is repaired by the next, or by
@@ -157,18 +176,24 @@ say "Setting up the worker's Python environment (this downloads PyTorch, a few h
 if [ -x "$APP/worker/.venv/bin/python" ] && ! good_python "$APP/worker/.venv/bin/python"; then rm -rf "$APP/worker/.venv"; fi
 [ -x "$APP/worker/.venv/bin/python" ] || "$PY" -m venv "$APP/worker/.venv"
 VPY="$APP/worker/.venv/bin/python"
-"$VPY" -m pip install --quiet --upgrade pip
+if get_uv; then
+  pip_install() { "$DIR/uv/uv" pip install --python "$VPY" "$@"; }
+else
+  warn "Could not download uv; installing with pip instead, which is slower."
+  "$VPY" -m pip install --quiet --upgrade pip
+  pip_install() { "$VPY" -m pip install --quiet "$@"; }
+fi
 if [ "$(uname)" = Darwin ]; then
   say "PyTorch $TORCH_VERSION (Apple silicon GPUs included)"
-  "$VPY" -m pip install --quiet "torch==$TORCH_VERSION"
+  pip_install "torch==$TORCH_VERSION"
 elif [ "${QUIRE_CPU:-}" != 1 ] && command -v nvidia-smi >/dev/null; then
   say "PyTorch $TORCH_VERSION for your NVIDIA GPU"
-  "$VPY" -m pip install --quiet "torch==$TORCH_VERSION" --index-url https://download.pytorch.org/whl/cu130
+  pip_install "torch==$TORCH_VERSION" --index-url https://download.pytorch.org/whl/cu130
 else
   say "PyTorch $TORCH_VERSION for the CPU"
-  "$VPY" -m pip install --quiet "torch==$TORCH_VERSION" --index-url https://download.pytorch.org/whl/cpu
+  pip_install "torch==$TORCH_VERSION" --index-url https://download.pytorch.org/whl/cpu
 fi
-"$VPY" -m pip install --quiet -r "$APP/worker/requirements.txt"
+pip_install -r "$APP/worker/requirements.txt"
 
 say "Building the app"
 (cd "$APP/web" && npm ci --no-audit --no-fund --loglevel=error && npm run build)
@@ -185,21 +210,45 @@ p.write_text("".join(f"{key}={value}\n" if l.startswith(key + "=") else l for l 
 PY
   else echo "$1=$2" >> "$ENV_FILE"; fi
 }
-MODEL_DIR="$APP/data/calibration/classifier/model"
+unzip_model() { # unzip_model ZIP DIR: every file's checksum is tested first, so a damaged download isn't unpacked
+  "$VPY" - "$1" "$2" <<'PY'
+import sys, zipfile
+try:
+    with zipfile.ZipFile(sys.argv[1]) as z:
+        if z.testzip() is None:
+            z.extractall(sys.argv[2])
+            sys.exit(0)
+except (zipfile.BadZipFile, OSError):
+    pass
+sys.exit(1)
+PY
+}
 if [ "${QUIRE_NO_MODEL:-}" != 1 ]; then
   if [ -f "$MODEL_DIR/model.safetensors" ]; then
     say "The AI-writing model is already there"
   else
-    say "Downloading the AI-writing model (about 575 MB)"
-    tmp="$(mktemp -d)"
-    if curl -fL --progress-bar -o "$tmp/model.zip" "$MODEL_URL" && mkdir -p "$MODEL_DIR" && \
-       "$VPY" -c "import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "$tmp/model.zip" "$MODEL_DIR"; then
-      :
+    if [ -n "$model_pid" ]; then
+      if kill -0 "$model_pid" 2>/dev/null; then
+        say "Waiting for the AI-writing model to finish downloading"
+        while kill -0 "$model_pid" 2>/dev/null; do
+          printf '\r    %s MB of about 575 ' "$(( $(wc -c 2>/dev/null <"$MODEL_ZIP.part" || echo 0) / 1048576 ))"; sleep 2
+        done
+        echo
+      fi
+      wait "$model_pid" || true; model_pid=""
+    fi
+    if [ -f "$MODEL_ZIP" ]; then
+      say "Unpacking the AI-writing model"
+      rm -rf "$MODEL_DIR"; mkdir -p "$MODEL_DIR"
+      if unzip_model "$MODEL_ZIP" "$MODEL_DIR"; then rm -rf "$DIR/download"
+      else rm -rf "$MODEL_DIR" "$MODEL_ZIP"; warn "The downloaded model was damaged and was deleted."; fi
     else
-      warn "Could not download the model. Run the installer again later. Until then the AI estimate uses"
+      warn "Could not download the model: $(tail -1 "$DIR/download/model.log" 2>/dev/null)"
+    fi
+    if [ ! -f "$MODEL_DIR/model.safetensors" ]; then
+      warn "Run the installer again later; it carries on where the download stopped. Until then the AI estimate uses"
       warn "Binoculars, which downloads two 1.5B-parameter models (about 6 GB) the first time a draft is checked."
     fi
-    rm -rf "$tmp"
   fi
   if [ -f "$MODEL_DIR/model.safetensors" ]; then
     set_env AI_DETECTOR classifier

@@ -88,6 +88,7 @@ $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Quire"
 if ((Test-Path $key) -and (Get-ItemProperty $key).InstallLocation -eq $Dir) { Remove-Item $key -Recurse }
 
 Say "Deleting the app"
+foreach ($d in "uv", "download") { Remove-Folder (Join-Path $Dir $d) | Out-Null }  # uv, an unfinished model download
 if (-not (Remove-Folder $App)) {
   Warn "Some files in $App are still in use. Restart Windows, then delete that folder."
   Done; return

@@ -34,7 +34,12 @@ $wasRunning = Test-Path (Join-Path $App "data\web.pid")
 & (Join-Path $PSScriptRoot "quire.ps1") -Stop | Out-Null
 Run git @("-C", $App, "checkout", "--quiet", $latest)
 # ponytail: PyTorch itself is not reinstalled here; a release that moves it says to run the installer again.
-Run (Join-Path $App "worker\.venv\Scripts\python.exe") @("-m", "pip", "install", "--quiet", "-r", (Join-Path $App "worker\requirements.txt"))
+# With uv when the installer left one (much faster), else pip.
+$venvPy = Join-Path $App "worker\.venv\Scripts\python.exe"
+$uv = Join-Path (Split-Path $App -Parent) "uv\uv.exe"
+if (Test-Path $uv) { Run $uv @("pip", "install", "--quiet", "--python", $venvPy, "-r", (Join-Path $App "worker\requirements.txt")) } else {
+  Run $venvPy @("-m", "pip", "install", "--quiet", "-r", (Join-Path $App "worker\requirements.txt"))
+}
 Push-Location (Join-Path $App "web")
 try { Run npm @("ci", "--no-audit", "--no-fund", "--loglevel=error"); Run npm @("run", "build") } finally { Pop-Location }
 # The version Settings > Apps shows.

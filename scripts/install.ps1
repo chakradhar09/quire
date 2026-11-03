@@ -30,6 +30,9 @@ param(
   [switch]$Yes
 )
 $ErrorActionPreference = "Stop"
+# Windows PowerShell 5.1 redraws its progress bar so often that it makes Invoke-WebRequest and Expand-Archive
+# many times slower on big files.
+$ProgressPreference = "SilentlyContinue"
 
 # Kept in step with web/lib/updates.ts (REPO) and MODEL.md.
 $Repo = "chakradhar09/quire"
@@ -54,6 +57,19 @@ function Ask($question, $default) {
 # Files the app parses (settings.json) or the worker reads (.env) are written as UTF-8 without a BOM:
 # Windows PowerShell's -Encoding utf8 would add one, and JSON.parse rejects it.
 function Write-Plain($path, $text) { [IO.File]::WriteAllText($path, $text, (New-Object Text.UTF8Encoding $false)) }
+# uv (astral.sh) installs Python packages several at a time, far faster than pip. It lives in $Dir\uv; pip is
+# the fallback when it can't be downloaded. uv's installer runs in its own PowerShell: on an error it calls exit,
+# which would close this window.
+function Get-Uv {
+  $ErrorActionPreference = "Continue"
+  $uv = Join-Path $Dir "uv\uv.exe"
+  if (-not (Test-Path $uv)) {
+    $env:UV_UNMANAGED_INSTALL = Join-Path $Dir "uv"
+    try { & (Get-Command powershell).Source -NoProfile -ExecutionPolicy Bypass -Command '$ProgressPreference = ''SilentlyContinue''; irm https://astral.sh/uv/install.ps1 | iex' | Out-Null } catch { }
+    Remove-Item Env:UV_UNMANAGED_INSTALL -ErrorAction SilentlyContinue
+  }
+  if (Test-Path $uv) { return $uv }
+}
 function Version($text) { if ($text -match '(\d+)\.(\d+)(\.(\d+))?') { [version]"$($Matches[1]).$($Matches[2]).$([int]$Matches[4])" } }
 
 # ---------------------------------------------------------------- What it needs
@@ -108,6 +124,33 @@ if ($missing.Count) {
 # ---------------------------------------------------------------- The code
 $App = Join-Path $Dir "app"
 New-Item -ItemType Directory -Force $Dir | Out-Null
+
+# ---------------------------------------------------------------- The AI-writing model, in the background
+# It downloads while the rest installs, into $Dir\download until it is unpacked. With curl.exe (part of Windows 10
+# and 11) a download that was cut off carries on where it stopped (-C -) the next time.
+$modelDir = Join-Path $App "data\calibration\classifier\model"
+$download = Join-Path $Dir "download"
+$modelZip = Join-Path $download ($ModelUrl -split "/")[-1]
+$modelPart = "$modelZip.part"
+$modelJob = $null
+if (-not $NoModel -and -not (Test-Path (Join-Path $modelDir "model.safetensors")) -and -not (Test-Path $modelZip)) {
+  New-Item -ItemType Directory -Force $download | Out-Null
+  # A download left running by an installer window that was closed would write into the same file.
+  try { Get-CimInstance Win32_Process -Filter "Name = 'curl.exe'" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($modelPart) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force } } catch { }
+  Say "Downloading the AI-writing model (about 575 MB) in the background"
+  $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+  if ($curl) {
+    $modelJob = Start-Process $curl.Source -WindowStyle Hidden -PassThru -ArgumentList "-fsSL --retry 3 -C - -o `"$modelPart`" `"$ModelUrl`""
+    $null = $modelJob.Handle  # without this, Windows PowerShell can't read the exit code once it ends
+  } else {
+    Remove-Item $modelPart -ErrorAction SilentlyContinue
+    $modelJob = Start-Job -ArgumentList $ModelUrl, $modelPart -ScriptBlock {
+      param($url, $out)
+      $ProgressPreference = "SilentlyContinue"
+      Invoke-WebRequest $url -OutFile $out -UseBasicParsing
+    }
+  }
+}
 if (Test-Path (Join-Path $App ".git")) {
   Say "Quire is already in $App; repairing it in place"
   # A copy on a release moves to the newest one, so a release that can't install is repaired by the next, or by
@@ -136,12 +179,16 @@ $venv = Join-Path $App "worker\.venv"
 $py = Join-Path $venv "Scripts\python.exe"
 if ((Test-Path $py) -and -not (Good-Python (& $py --version))) { Remove-Item -Recurse -Force $venv }  # made with another Python
 if (-not (Test-Path $py)) { Run $pyExe @($pyArgs + @("-m", "venv", $venv)) }
-Run $py @("-m", "pip", "install", "--quiet", "--upgrade", "pip")
+$uv = Get-Uv
+if (-not $uv) { Warn "Could not download uv; installing with pip instead, which is slower."; Run $py @("-m", "pip", "install", "--quiet", "--upgrade", "pip") }
+function Pip-Install([string[]]$arguments) {
+  if ($uv) { Run $uv (@("pip", "install", "--python", $py) + $arguments) } else { Run $py (@("-m", "pip", "install", "--quiet") + $arguments) }
+}
 $gpu = (-not $Cpu) -and (Get-Command nvidia-smi -ErrorAction SilentlyContinue)
 $index = if ($gpu) { "https://download.pytorch.org/whl/cu130" } else { "https://download.pytorch.org/whl/cpu" }
 Say ("PyTorch {0} for {1}" -f $TorchVersion, $(if ($gpu) { "your NVIDIA GPU" } else { "the CPU" }))
-Run $py @("-m", "pip", "install", "--quiet", "torch==$TorchVersion", "--index-url", $index)
-Run $py @("-m", "pip", "install", "--quiet", "-r", (Join-Path $App "worker\requirements.txt"))
+Pip-Install @("torch==$TorchVersion", "--index-url", $index)
+Pip-Install @("-r", (Join-Path $App "worker\requirements.txt"))
 
 # ---------------------------------------------------------------- The app (Node)
 Say "Building the app"
@@ -159,21 +206,47 @@ function Set-Env($key, $value) {
 
 # ---------------------------------------------------------------- The AI-writing model
 if (-not $NoModel) {
-  $modelDir = Join-Path $App "data\calibration\classifier\model"
   if (Test-Path (Join-Path $modelDir "model.safetensors")) {
     Say "The AI-writing model is already there"
   } else {
-    Say "Downloading the AI-writing model (about 575 MB)"
-    $zip = Join-Path $env:TEMP "quire-classifier.zip"
-    try {
-      Invoke-WebRequest $ModelUrl -OutFile $zip -UseBasicParsing
-      New-Item -ItemType Directory -Force $modelDir | Out-Null
-      Expand-Archive $zip -DestinationPath $modelDir -Force
-      Remove-Item $zip
-    } catch {
-      Warn "Could not download the model ($($_.Exception.Message))."
-      Warn "Run the installer again later. Until then the AI estimate uses Binoculars, which downloads two"
-      Warn "1.5B-parameter models (about 6 GB) the first time a draft is checked."
+    if ($modelJob -is [System.Diagnostics.Process]) {
+      if (-not $modelJob.HasExited) {
+        Say "Waiting for the AI-writing model to finish downloading"
+        while (-not $modelJob.HasExited) {
+          $mb = if (Test-Path $modelPart) { [int]((Get-Item $modelPart).Length / 1MB) } else { 0 }
+          Write-Host -NoNewline "`r    $mb MB of about 575 "
+          Start-Sleep -Seconds 2
+        }
+        Write-Host ""
+      }
+      if ($modelJob.ExitCode -eq 0 -and (Test-Path $modelPart)) { Move-Item -Force $modelPart $modelZip }
+    } elseif ($modelJob) {
+      if ($modelJob.State -eq "Running") { Say "Waiting for the AI-writing model to finish downloading" }
+      Wait-Job $modelJob | Out-Null
+      if ($modelJob.State -eq "Completed" -and (Test-Path $modelPart)) { Move-Item -Force $modelPart $modelZip }
+      Remove-Job $modelJob
+    }
+    # A .part can be whole: resuming a finished download, the server answers that there's nothing left to send.
+    $zip = if (Test-Path $modelZip) { $modelZip } elseif (Test-Path $modelPart) { $modelPart } else { $null }
+    if ($zip) {
+      Say "Unpacking the AI-writing model"
+      try {
+        if (Test-Path $modelDir) { Remove-Item -Recurse -Force $modelDir }
+        New-Item -ItemType Directory -Force (Split-Path $modelDir) | Out-Null
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [IO.Compression.ZipFile]::ExtractToDirectory($zip, $modelDir)  # much faster than Expand-Archive
+        Remove-Item -Recurse -Force $download
+      } catch {
+        if (Test-Path $modelDir) { Remove-Item -Recurse -Force $modelDir }
+        if ($zip -eq $modelZip) { Remove-Item $modelZip }  # a .part is kept, to carry on from
+        Warn "The model download didn't finish, or is damaged."
+      }
+    } else {
+      Warn "Could not download the model."
+    }
+    if (-not (Test-Path (Join-Path $modelDir "model.safetensors"))) {
+      Warn "Run the installer again later; it carries on where the download stopped. Until then the AI estimate uses"
+      Warn "Binoculars, which downloads two 1.5B-parameter models (about 6 GB) the first time a draft is checked."
     }
   }
   if (Test-Path (Join-Path $modelDir "model.safetensors")) { foreach ($k in $ModelEnv.Keys) { Set-Env $k $ModelEnv[$k] } }

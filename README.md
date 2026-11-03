@@ -133,7 +133,7 @@ A Next.js app (`web/`) shows the pages and queues work in a SQLite database; a P
 git clone https://github.com/chakradhar09/quire.git && cd quire
 python -m venv worker/.venv
 worker/.venv/bin/pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu   # or .../whl/cu130
-worker/.venv/bin/pip install -r worker/requirements.txt
+worker/.venv/bin/pip install -r worker/requirements.txt   # requirements-calibration.txt to train the classifier
 cp worker/.env.example worker/.env        # optional settings; the Brave key goes on the Settings page
 cd web && npm ci && npm run dev           # http://127.0.0.1:3000
 ```

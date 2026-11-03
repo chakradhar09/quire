@@ -30,7 +30,9 @@ was_running=0; [ -f "$APP/data/web.pid" ] && was_running=1
 git -C "$APP" -c core.fileMode=false checkout --quiet "$latest"
 chmod +x "$APP"/scripts/*.sh
 # ponytail: PyTorch itself is not reinstalled here; a release that moves it says to run the installer again.
-"$APP/worker/.venv/bin/python" -m pip install --quiet -r "$APP/worker/requirements.txt"
+# With uv when the installer left one (much faster), else pip.
+if [ -x "$APP/../uv/uv" ]; then "$APP/../uv/uv" pip install --quiet --python "$APP/worker/.venv/bin/python" -r "$APP/worker/requirements.txt"
+else "$APP/worker/.venv/bin/python" -m pip install --quiet -r "$APP/worker/requirements.txt"; fi
 (cd "$APP/web" && npm ci --no-audit --no-fund --loglevel=error && npm run build)
 echo "==> Quire is now $latest"
 if [ "$was_running" = 1 ] && [ "$QUIET" = 0 ]; then "$APP/scripts/quire.sh"; fi
