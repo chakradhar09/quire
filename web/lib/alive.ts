@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { dataDirectory } from "./db.ts";
+import { workerRunning } from "./worker.ts";
 
 export const TICK_MS = 30_000;
 export const IDLE_MS = 3 * 60_000;
@@ -35,7 +36,9 @@ export function pageSeen() {
 // Stops this server, and with worker: true the worker too (a check it was running is queued again on the next
 // start). The exit waits a moment so the reply to the Stop button gets out first.
 export function stopQuire({ worker }: { worker: boolean }, dataDir = dataDirectory()) {
-  if (worker) {
+  // Only a worker whose pid file is current: after a crash or a reboot the id in a stale one may be another
+  // program's by now (lib/worker.ts).
+  if (worker && workerRunning(dataDir)) {
     try {
       process.kill(Number(fs.readFileSync(path.join(dataDir, "worker.pid"), "utf8")));
       fs.rmSync(path.join(dataDir, "worker.pid"), { force: true });

@@ -30,6 +30,8 @@ param(
   [switch]$Yes
 )
 $ErrorActionPreference = "Stop"
+# Next.js reports anonymous usage to Vercel by default; Quire sends nothing but its searches and update check.
+$env:NEXT_TELEMETRY_DISABLED = "1"
 # Windows PowerShell 5.1 redraws its progress bar so often that it makes Invoke-WebRequest and Expand-Archive
 # many times slower on big files.
 $ProgressPreference = "SilentlyContinue"

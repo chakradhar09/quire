@@ -10,6 +10,8 @@
 # Options (environment variables): QUIRE_DIR, QUIRE_SOURCE (git URL or folder), BRAVE_API_KEY, QUIRE_CPU=1 (CPU
 # PyTorch even with an NVIDIA GPU), QUIRE_NO_MODEL=1, QUIRE_YES=1 (accept every default).
 set -euo pipefail
+# Next.js reports anonymous usage to Vercel by default; Quire sends nothing but its searches and update check.
+export NEXT_TELEMETRY_DISABLED=1
 
 # Kept in step with scripts/install.ps1, web/lib/updates.ts (REPO) and MODEL.md.
 REPO="chakradhar09/quire"

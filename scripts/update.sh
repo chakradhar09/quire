@@ -3,6 +3,8 @@
 # tag is newer than this copy: stops Quire, switches to it, reinstalls the worker's and the app's packages,
 # rebuilds, and starts Quire again if it was running. --quiet prints only what changed (used by the launcher).
 set -euo pipefail
+# Next.js reports anonymous usage to Vercel by default; Quire sends nothing but its searches and update check.
+export NEXT_TELEMETRY_DISABLED=1
 APP="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0")")/.." && pwd)"
 # A Node.js the installer put beside the app comes first.
 if [ -d "$APP/../node/bin" ]; then PATH="$APP/../node/bin:$PATH"; fi

@@ -8,6 +8,8 @@
 #>
 param([switch]$Quiet, [switch]$Force)
 $ErrorActionPreference = "Stop"
+# Next.js reports anonymous usage to Vercel by default; Quire sends nothing but its searches and update check.
+$env:NEXT_TELEMETRY_DISABLED = "1"
 $App = Split-Path $PSScriptRoot -Parent
 function Say($text) { Write-Host "==> $text" -ForegroundColor Green }
 # Runs a program only to see what it prints (Windows PowerShell 5.1 makes its stderr fatal under "Stop").

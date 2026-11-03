@@ -119,7 +119,7 @@ It asks before removing anything, and asks whether to keep your drafts, reports 
 
 ## Privacy and safety
 
-- **What leaves your PC:** the short phrases sent to Brave Search for the similarity check, the pages it then fetches, and once a day a request to GitHub for the latest release number (`QUIRE_UPDATE_CHECK=off` in the environment turns that off). Your files never leave.
+- **What leaves your PC:** the short phrases sent to Brave Search for the similarity check, the pages it then fetches, and once a day a request to GitHub for the latest release number (`QUIRE_UPDATE_CHECK=off` in the environment turns that off). Your files never leave. (Next.js, which Quire is built on, sends anonymous usage reports by default; Quire's scripts switch them off.)
 - **Where your work lives:** the `data` folder inside the install: uploads, extracted text, reports and the database. Delete it, or [uninstall](#uninstall) without keeping your data, to remove everything.
 - **Quire has no login and must never be exposed to a network.** It only answers on `127.0.0.1`; don't put it behind a proxy or open its port to other machines.
 
@@ -135,7 +135,7 @@ python -m venv worker/.venv
 worker/.venv/bin/pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu   # or .../whl/cu130
 worker/.venv/bin/pip install -r worker/requirements.txt   # requirements-calibration.txt to train the classifier
 cp worker/.env.example worker/.env        # optional settings; the Brave key goes on the Settings page
-cd web && npm ci && npm run dev           # http://127.0.0.1:3000
+cd web && npm ci && npm run dev           # http://127.0.0.1:3000 (npx next telemetry disable: no usage reports)
 ```
 
 On Windows the virtual environment's executables are in `worker\.venv\Scripts\`. Tests: `npm test`, `npx tsc --noEmit` and `npx eslint app components lib` in `web/`; `python -m unittest discover -p "*_test.py"` in `worker/`. Training and evaluating the classifier: `worker/calibration/` (see [MODEL.md](MODEL.md)).

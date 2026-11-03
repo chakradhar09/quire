@@ -14,5 +14,10 @@ test("workerRunning reads data/worker.pid and checks that the process is alive",
   assert.equal(workerRunning(dir), false);
   fs.writeFileSync(path.join(dir, "worker.pid"), "not a pid");
   assert.equal(workerRunning(dir), false);
+  // Left from before a crash or a reboot: a live pid no longer counts once the worker stopped touching the file.
+  fs.writeFileSync(path.join(dir, "worker.pid"), String(process.pid));
+  const old = new Date(Date.now() - 10 * 60_000);
+  fs.utimesSync(path.join(dir, "worker.pid"), old, old);
+  assert.equal(workerRunning(dir), false);
   fs.rmSync(dir, { recursive: true });
 });

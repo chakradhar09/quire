@@ -13,6 +13,7 @@ import os
 import pathlib
 import shutil
 import sys
+import threading
 import time
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -30,6 +31,10 @@ from text import bibliography_start, in_quote, normalize, pick_queries, quote_sp
 NOW = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"
 MIN_WORDS = 20
 IDLE_SECONDS = 2
+# The pid file is touched this often while the worker runs. Older than STALE in web/lib/worker.ts and the
+# launchers (120 s), it is left over from a worker that died (a crash, a reboot), and its process id may belong
+# to another program by now.
+HEARTBEAT_SECONDS = 15
 CACHE_DAYS = 30
 
 
@@ -288,6 +293,15 @@ def run(conn, job):
         return False
 
 
+def keep_fresh(pid_file, pid):
+    """Touch the pid file every HEARTBEAT_SECONDS for as long as it names this worker (a daemon thread)."""
+    while True:
+        time.sleep(HEARTBEAT_SECONDS)
+        with contextlib.suppress(OSError):
+            if pid_file.read_text(encoding="utf-8").strip() == pid:
+                os.utime(pid_file)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Quire worker")
     parser.add_argument("--once", action="store_true", help="run one job, then exit")
@@ -303,6 +317,7 @@ def main(argv=None):
     # While this file names a live process, the web app does not start another worker (web/lib/worker.ts).
     pid_file = migrate.default_path().parent / "worker.pid"
     pid_file.write_text(str(os.getpid()), encoding="utf-8")
+    threading.Thread(target=keep_fresh, args=(pid_file, str(os.getpid())), daemon=True).start()
     last_job = time.monotonic()
     try:
         while True:
