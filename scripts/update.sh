@@ -24,7 +24,10 @@ fi
 echo "==> Updating Quire $current to $latest"
 was_running=0; [ -f "$APP/data/web.pid" ] && was_running=1
 "$APP/scripts/quire.sh" --stop >/dev/null
-git -C "$APP" checkout --quiet "$latest"
+# The scripts' executable bit is not a local change (the installer sets core.fileMode too; this covers older
+# installs), and is set again after the switch.
+git -C "$APP" -c core.fileMode=false checkout --quiet "$latest"
+chmod +x "$APP"/scripts/*.sh
 # ponytail: PyTorch itself is not reinstalled here; a release that moves it says to run the installer again.
 "$APP/worker/.venv/bin/python" -m pip install --quiet -r "$APP/worker/requirements.txt"
 (cd "$APP/web" && npm ci --no-audit --no-fund --loglevel=error && npm run build)
