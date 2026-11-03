@@ -28,7 +28,7 @@ export function UpdateNotice({ version, current, url, autoUpdate }: { version: s
             You have {current}. {url && <a href={url} target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2">See what changed</a>}
           </Dialog.Description>
           <p className="mt-4 text-sm">
-            {auto ? "It installs the next time Quire starts." : "To update, close Quire and open Update Quire from the Start menu (or run scripts/update)."}
+            {auto ? "It installs the next time Quire starts." : "To update, close Quire and open Update Quire from the Start menu (or run quire-update)."}
             {" "}Your drafts and reports stay where they are.
           </p>
           <div className="mt-2">

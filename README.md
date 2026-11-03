@@ -103,7 +103,7 @@ Open **Quire** from the Start menu (or run `quire`). It starts in the background
 
 When a new release is out, an **Update** notice appears in Quire's header. Install it with **Update Quire** (or `quire-update`), or switch on **Install new releases automatically when Quire starts** on the Settings page. Your drafts and reports are kept.
 
-*Updating from 0.1.0 on macOS or Linux stops with "Your local changes would be overwritten by checkout"?* That was a bug in 0.1.0's updater. Run the install line again (it updates and fixes the updater, and keeps your drafts); updates work normally after that.
+**On Quire 0.1.0, update by running the [install line](#install) again, once.** 0.1.0's updater can't see newer releases: **Update Quire** says 0.1.0 ("model-v5") is the latest, or shows an error on Windows, where with automatic updates on Quire may not open at all. The installer moves you to the newest release and keeps your drafts and settings; updates work normally after that.
 
 ## Uninstall
 
