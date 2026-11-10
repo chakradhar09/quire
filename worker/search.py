@@ -8,7 +8,7 @@ import socket
 import time
 from urllib.robotparser import RobotFileParser
 
-import httpx
+import httpx2
 import trafilatura
 
 from text import normalize
@@ -28,8 +28,8 @@ class RateLimited(Exception):
 def check_url(url):
     """Raise UnsafeUrl unless url is http(s) to a host whose every address is public."""
     try:
-        u = httpx.URL(url)
-    except httpx.InvalidURL as e:
+        u = httpx2.URL(url)
+    except httpx2.InvalidURL as e:
         raise UnsafeUrl(f"not a URL: {url}") from e
     if u.scheme not in ("http", "https") or not u.host:
         raise UnsafeUrl(f"only http and https pages are fetched: {url}")
@@ -43,7 +43,7 @@ def check_url(url):
             ip = ip.ipv4_mapped
         if not ip.is_global or ip.is_multicast:
             raise UnsafeUrl(f"{u.host} resolves to a non-public address ({ip})")
-    # ponytail: httpx resolves the name again when it connects, so a host that changes its DNS
+    # ponytail: httpx2 resolves the name again when it connects, so a host that changes its DNS
     # answer in between could slip through; pin the checked IP in a custom transport if that matters.
 
 
@@ -59,7 +59,7 @@ class Fetcher:
     """Polite page fetcher: robots.txt, one request per second per host, 10 s, 5 MB, web pages only."""
 
     def __init__(self, client=None, min_interval=1.0, contact="", timeout=10.0, max_bytes=5 * 1024 * 1024):
-        self.client = client or httpx.Client()
+        self.client = client or httpx2.Client()
         self.min_interval = min_interval
         self.timeout = timeout
         self.max_bytes = max_bytes
@@ -70,7 +70,7 @@ class Fetcher:
     def _request(self, url):
         """One guarded GET, no redirects followed. Returns (status, headers, body); body None if too big."""
         check_url(url)
-        host = httpx.URL(url).host
+        host = httpx2.URL(url).host
         wait = self.last_request.get(host, 0) + self.min_interval - time.monotonic()
         if wait > 0:
             time.sleep(wait)
@@ -87,13 +87,13 @@ class Fetcher:
             return r.status_code, r.headers, bytes(body)
 
     def _allowed(self, url):
-        u = httpx.URL(url)
+        u = httpx2.URL(url)
         origin = f"{u.scheme}://{u.netloc.decode()}"
         if origin not in self.robots:
             parser = RobotFileParser()
             try:
                 status, _, body = self._request(origin + "/robots.txt")
-            except (httpx.HTTPError, UnsafeUrl):
+            except (httpx2.HTTPError, UnsafeUrl):
                 parser.disallow_all = True
             else:  # the same rules as RobotFileParser.read(); a 5xx leaves it unread, which disallows
                 if status in (401, 403):
@@ -114,7 +114,7 @@ class Fetcher:
                 return None
             status, headers, body = self._request(url)
             if status in REDIRECTS:
-                url = str(httpx.URL(url).join(headers.get("location", "")))
+                url = str(httpx2.URL(url).join(headers.get("location", "")))
                 continue
             if status != 200 or body is None:
                 return None
@@ -136,7 +136,7 @@ class BraveSearch:
         if not key:
             raise RuntimeError("No Brave Search API key. Add one on Quire's Settings page.")
         self.key = key
-        self.client = client or httpx.Client(timeout=10.0)
+        self.client = client or httpx2.Client(timeout=10.0)
         self.spacing = spacing  # the free plan allows one request per second
         self.last = 0.0
 

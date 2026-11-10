@@ -65,7 +65,7 @@ flowchart LR
 | jobs | `jobs` table + one Python worker | the queue lives in the same file and transactions |
 | files | `data/uploads/{document_id}/{filename}` on disk | no storage service needed |
 | hosting | none; both processes run on your PC | the worker needs a model and long runs anyway |
-| worker libraries | `httpx`, `pdfplumber`, `python-docx`, `striprtf`, `odfpy`, `trafilatura`, `confusable_homoglyphs`, `py3langid`, `transformers` + `torch` | one library per job; stdlib `sqlite3`, `difflib`, `urllib.robotparser`, `hashlib`, `unicodedata` for the rest |
+| worker libraries | `httpx2`, `pdfplumber`, `python-docx`, `striprtf`, `odfpy`, `trafilatura`, `confusable_homoglyphs`, `py3langid`, `transformers` + `torch` | one library per job; stdlib `sqlite3`, `difflib`, `urllib.robotparser`, `hashlib`, `unicodedata` for the rest |
 | source search | Brave Search API (web), OpenAlex and arXiv (scholarly) | official APIs with your own key; Brave is the only paid one, check its current quota before choosing a per-check budget |
 
 `data/` is git-ignored: it holds your drafts and fetched pages.

@@ -15,7 +15,7 @@ import json
 import random
 import re
 
-import httpx
+import httpx2
 
 from ai import MIN_WORDS, prose_sentences
 from calibration import data_dir
@@ -57,7 +57,7 @@ def download(dest=None, client=None):
     """Fetch the corpus into dest (data/calibration/ by default). Returns the number of essays kept."""
     dest = dest or data_dir()
     dest.mkdir(parents=True, exist_ok=True)
-    client = client or httpx.Client(timeout=httpx.Timeout(60, read=300))
+    client = client or httpx2.Client(timeout=httpx2.Timeout(60, read=300))
     url, params = URL, PARAMS
     for _ in range(2):  # Drive may first answer with a "can't scan this file for viruses" page
         with client.stream("GET", url, params=params, follow_redirects=True) as r:
@@ -83,7 +83,7 @@ def _resuming(client, url, params, r, attempts=20):
                     got += len(chunk)
                     yield chunk
                 return
-            except httpx.TransportError as e:
+            except httpx2.TransportError as e:
                 print(f"  connection dropped after {got / 1e6:.0f} MB ({type(e).__name__}); resuming")
                 r.close()
                 r = client.send(client.build_request("GET", url, params=params, headers={"range": f"bytes={got}-"}),

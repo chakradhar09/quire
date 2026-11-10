@@ -17,7 +17,7 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import httpx
+import httpx2
 
 from calibration import data_dir
 
@@ -70,7 +70,7 @@ def _rate(batch, client, key, model, log):
             r = client.post(API, headers={"authorization": f"Bearer {key}"},
                             json={"model": model, "temperature": 0, "max_tokens": 16000,  # it reasons first
                                   "messages": [{"role": "user", "content": PROMPT.format(passages=passages)}]})
-        except httpx.HTTPError as e:
+        except httpx2.HTTPError as e:
             log(f"  request failed: {e}")
             continue
         if r.status_code == 200:
@@ -87,7 +87,7 @@ def _rate(batch, client, key, model, log):
 
 def judge(texts, cache, path, key, model=MODEL, client=None, workers=WORKERS, log=print):
     """Rates every text not in cache, WORKERS requests at a time, saving cache to path after each one."""
-    client = client or httpx.Client(timeout=600)
+    client = client or httpx2.Client(timeout=600)
     todo = sorted({key_of(t): t for t in texts if key_of(t) not in cache}.items())
     random.Random(2026).shuffle(todo)
     batches = [todo[i:i + BATCH] for i in range(0, len(todo), BATCH)]

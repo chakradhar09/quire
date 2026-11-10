@@ -1,11 +1,11 @@
-"""The similarity job's network-facing parts, with no network: httpx.MockTransport stands in
+"""The similarity job's network-facing parts, with no network: httpx2.MockTransport stands in
 for Brave and for web servers. Run with the venv: .venv\\Scripts\\python -m unittest discover -p "*_test.py"
 """
 import json
 import pathlib
 import unittest
 
-import httpx
+import httpx2
 
 from search import BraveSearch, Fetcher, RateLimited, UnsafeUrl, check_url, extract
 from text import pick_queries
@@ -72,8 +72,8 @@ def server(routes):
         if callable(route):
             return route(request)
         status, headers, body = route
-        return httpx.Response(status, headers=headers, content=body)
-    return httpx.Client(transport=httpx.MockTransport(handle))
+        return httpx2.Response(status, headers=headers, content=body)
+    return httpx2.Client(transport=httpx2.MockTransport(handle))
 
 
 HTML = {"content-type": "text/html; charset=utf-8"}
@@ -116,7 +116,7 @@ class FetcherTest(unittest.TestCase):
 
         def page(request):
             seen["ua"] = request.headers["user-agent"]
-            return httpx.Response(200, headers=HTML, content=FIXTURE.encode())
+            return httpx2.Response(200, headers=HTML, content=FIXTURE.encode())
         Fetcher(client=server({f"{PUBLIC}/p": page}), min_interval=0, contact="me@example.org").fetch(f"{PUBLIC}/p")
         self.assertIn("Quire", seen["ua"])
         self.assertIn("me@example.org", seen["ua"])
@@ -132,7 +132,7 @@ class BraveSearchTest(unittest.TestCase):
             seen.update(key=request.headers["x-subscription-token"], q=request.url.params["q"],
                         count=request.url.params["count"])
             body = {"web": {"results": [{"url": "https://a.example/1"}, {"url": "https://b.example/2"}]}}
-            return httpx.Response(200, json=body)
+            return httpx2.Response(200, json=body)
         brave = BraveSearch(key="k-123", client=server({self.API: api}), spacing=0)
         self.assertEqual(brave('"tangled roots slow the tide"'), ["https://a.example/1", "https://b.example/2"])
         self.assertEqual(seen, {"key": "k-123", "q": '"tangled roots slow the tide"', "count": "3"})

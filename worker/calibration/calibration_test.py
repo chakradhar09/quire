@@ -7,7 +7,7 @@ import pathlib
 import tempfile
 import unittest
 
-import httpx
+import httpx2
 
 from calibration import generate_ai, persuade
 
@@ -48,11 +48,11 @@ class TempDir(unittest.TestCase):
 
 class DownloadTest(TempDir):
     def client(self, handler):
-        return httpx.Client(transport=httpx.MockTransport(handler))
+        return httpx2.Client(transport=httpx2.MockTransport(handler))
 
     def test_keeps_one_row_per_essay_and_the_prompts_beside_them(self):
         body = csv_bytes(ROWS)
-        n = persuade.download(self.dir, self.client(lambda r: httpx.Response(200, content=body,
+        n = persuade.download(self.dir, self.client(lambda r: httpx2.Response(200, content=body,
                                                                             headers={"content-type": "application/octet-stream"})))
         self.assertEqual(n, 2)
         essays = list(csv.DictReader((self.dir / persuade.ESSAYS).open(encoding="utf-8", newline="")))
@@ -72,8 +72,8 @@ class DownloadTest(TempDir):
         def handler(request):
             seen.append(request.url.params.get("uuid"))
             if request.url.params.get("uuid") == "u-1":
-                return httpx.Response(200, content=csv_bytes(ROWS), headers={"content-type": "text/csv"})
-            return httpx.Response(200, text=page, headers={"content-type": "text/html; charset=utf-8"})
+                return httpx2.Response(200, content=csv_bytes(ROWS), headers={"content-type": "text/csv"})
+            return httpx2.Response(200, text=page, headers={"content-type": "text/html; charset=utf-8"})
         self.assertEqual(persuade.download(self.dir, self.client(handler)), 2)
         self.assertEqual(seen, [None, "u-1"])
 
@@ -84,22 +84,22 @@ class DownloadTest(TempDir):
 
         def dropped():
             yield body[:cut]
-            raise httpx.RemoteProtocolError("peer closed connection without sending complete message body")
+            raise httpx2.RemoteProtocolError("peer closed connection without sending complete message body")
 
         def handler(request):
             ranges.append(request.headers.get("range"))
             if request.headers.get("range") == f"bytes={cut}-":
-                return httpx.Response(206, content=body[cut:])
-            return httpx.Response(200, content=dropped(), headers={"content-type": "application/octet-stream"})
+                return httpx2.Response(206, content=body[cut:])
+            return httpx2.Response(200, content=dropped(), headers={"content-type": "application/octet-stream"})
         self.assertEqual(persuade.download(self.dir, self.client(handler)), 2)
         self.assertEqual(ranges, [None, f"bytes={cut}-"])
 
     def test_stops_with_the_readme_link_when_the_file_is_not_the_corpus(self):
         bad = csv_bytes([{"a": "1"}], columns=["a", "b"])
         with self.assertRaisesRegex(RuntimeError, "github.com/scrosseye/persuade_corpus_2.0"):
-            persuade.download(self.dir, self.client(lambda r: httpx.Response(200, content=bad)))
+            persuade.download(self.dir, self.client(lambda r: httpx2.Response(200, content=bad)))
         with self.assertRaisesRegex(RuntimeError, "github.com/scrosseye"):
-            persuade.download(self.dir, self.client(lambda r: httpx.Response(
+            persuade.download(self.dir, self.client(lambda r: httpx2.Response(
                 200, text="<html>quota exceeded</html>", headers={"content-type": "text/html"})))
         self.assertFalse((self.dir / persuade.ESSAYS).exists())
 
@@ -136,12 +136,12 @@ class GenerateTest(TempDir):
             self.sent.append(request)
             return handler(request)
         return generate_ai.generate(self.dir, key="sk-test", models=list(models), per_prompt=1,
-                                    client=httpx.Client(transport=httpx.MockTransport(record)), pause=0, retry_wait=0,
+                                    client=httpx2.Client(transport=httpx2.MockTransport(record)), pause=0, retry_wait=0,
                                     log=lambda *a: None)
 
     @staticmethod
     def reply(text="Phones distract drivers. " * 20):
-        return httpx.Response(200, json={"choices": [{"message": {"content": text}}]})
+        return httpx2.Response(200, json={"choices": [{"message": {"content": text}}]})
 
     def test_writes_one_essay_per_prompt_and_model_sending_only_the_assignment(self):
         written, stopped = self.run_with(lambda r: self.reply())
@@ -162,8 +162,8 @@ class GenerateTest(TempDir):
         self.assertEqual((written, self.sent), (0, []))
 
     def test_stops_at_the_rate_limit_with_a_message_keeping_what_it_wrote(self):
-        calls = iter([self.reply(), httpx.Response(429, json={"error": {"message": "Rate limit exceeded: free-models-per-day"}})])
-        written, stopped = self.run_with(lambda r: next(calls, httpx.Response(429, json={})))
+        calls = iter([self.reply(), httpx2.Response(429, json={"error": {"message": "Rate limit exceeded: free-models-per-day"}})])
+        written, stopped = self.run_with(lambda r: next(calls, httpx2.Response(429, json={})))
         self.assertEqual(written, 1)
         self.assertIn("free-models-per-day", stopped)
         self.assertEqual(len(list((self.dir / "ai").iterdir())), 1)
@@ -171,7 +171,7 @@ class GenerateTest(TempDir):
     def test_a_busy_provider_is_retried_then_skipped_while_other_models_carry_on(self):
         def handler(request):
             if b"m/one" in request.content:
-                return httpx.Response(429, json={"error": {"message": "Provider returned error"}})
+                return httpx2.Response(429, json={"error": {"message": "Provider returned error"}})
             return self.reply()
         written, stopped = self.run_with(handler)
         self.assertEqual((written, stopped), (2, None))
@@ -182,9 +182,9 @@ class GenerateTest(TempDir):
     def test_skips_a_model_that_fails_or_writes_nothing(self):
         def handler(request):
             if b"m/two" in request.content:
-                return httpx.Response(404, json={"error": {"message": "No endpoints found"}})
+                return httpx2.Response(404, json={"error": {"message": "No endpoints found"}})
             if b"Venus" in request.content:  # OpenRouter can report an error inside a 200
-                return httpx.Response(200, json={"error": {"message": "Upstream timed out", "code": 502}})
+                return httpx2.Response(200, json={"error": {"message": "Upstream timed out", "code": 502}})
             return self.reply("")
         written, stopped = self.run_with(handler)
         self.assertEqual((written, stopped), (0, None))

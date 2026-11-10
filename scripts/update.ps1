@@ -55,7 +55,8 @@ if (Test-Path $uv) { Run $uv @("pip", "install", "--quiet", "--python", $venvPy,
   Run $venvPy @("-m", "pip", "install", "--quiet", "-r", (Join-Path $App "worker\requirements.txt"))
 }
 Push-Location (Join-Path $App "web")
-try { Run npm @("ci", "--no-audit", "--no-fund", "--loglevel=error"); Run npm @("run", "build") } finally { Pop-Location }
+# Build it, then remove the packages used only for building (TypeScript, Tailwind, eslint: about 330) are removed.
+try { Run npm @("ci", "--no-audit", "--no-fund", "--loglevel=error"); Run npm @("run", "build"); Run npm @("prune", "--omit=dev", "--no-audit", "--no-fund", "--loglevel=error") } finally { Pop-Location }
 # The version Settings > Apps shows.
 $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Quire"
 if (Test-Path $key) { Set-ItemProperty $key DisplayVersion $latest.TrimStart("v") }

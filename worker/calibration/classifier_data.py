@@ -212,8 +212,8 @@ def bigpatent(split, n, span, seed=19):
     cache = root() / "raw" / "bigpatent" / f"{split}.jsonl"
     if not cache.exists():
         import time
-        import httpx
-        rows, client = [], httpx.Client(timeout=120)
+        import httpx2
+        rows, client = [], httpx2.Client(timeout=120)
         for offset in random.Random(seed).sample(range(0, span, 100), n // 50):
             r = client.get("https://datasets-server.huggingface.co/rows", params={
                 "dataset": "NortheasternUniversity/big_patent", "config": "all", "split": split,

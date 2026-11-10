@@ -24,7 +24,7 @@ import random
 import re
 from concurrent.futures import ThreadPoolExecutor
 
-import httpx
+import httpx2
 from pathlib import Path
 
 from calibration.classifier_data import plain, root
@@ -112,7 +112,7 @@ def jobs():
 
 def generate(key, log=print):
     todo = [j for j in jobs() if not j[0].exists()]
-    client = httpx.Client(timeout=900)
+    client = httpx2.Client(timeout=900)
     alive = answering(sorted({j[1] for j in todo}), key, client)
     skipped = sorted({j[1] for j in todo} - alive)
     if skipped:

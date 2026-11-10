@@ -35,6 +35,7 @@ chmod +x "$APP"/scripts/*.sh
 # With uv when the installer left one (much faster), else pip.
 if [ -x "$APP/../uv/uv" ]; then "$APP/../uv/uv" pip install --quiet --python "$APP/worker/.venv/bin/python" -r "$APP/worker/requirements.txt"
 else "$APP/worker/.venv/bin/python" -m pip install --quiet -r "$APP/worker/requirements.txt"; fi
-(cd "$APP/web" && npm ci --no-audit --no-fund --loglevel=error && npm run build)
+# Build it, then remove the packages used only for building (TypeScript, Tailwind, eslint: about 330) are removed.
+(cd "$APP/web" && npm ci --no-audit --no-fund --loglevel=error && npm run build && npm prune --omit=dev --no-audit --no-fund --loglevel=error)
 echo "==> Quire is now $latest"
 if [ "$was_running" = 1 ] && [ "$QUIET" = 0 ]; then "$APP/scripts/quire.sh"; fi

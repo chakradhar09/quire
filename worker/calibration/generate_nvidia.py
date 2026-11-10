@@ -17,7 +17,7 @@ import random
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-import httpx
+import httpx2
 
 from calibration import data_dir
 from calibration.generate_ai import PROMPTS, prompt_text, slug
@@ -265,7 +265,7 @@ def one(job, key, client, log):
             r = client.post(API, headers={"authorization": f"Bearer {key}"},
                             json={"model": model, "temperature": temp, "max_tokens": 16000,
                                   "messages": [{"role": "user", "content": prompt}]})
-        except httpx.HTTPError as e:
+        except httpx2.HTTPError as e:
             log(f"  {path.name}: {type(e).__name__}")
             continue
         if r.status_code == 200:
@@ -289,7 +289,7 @@ def answering(models, key, client, wait=90):
         try:
             return client.post(API, headers={"authorization": f"Bearer {key}"}, timeout=wait, json={
                 "model": model, "max_tokens": 200, "messages": [{"role": "user", "content": "Say OK."}]}).status_code == 200
-        except httpx.HTTPError:
+        except httpx2.HTTPError:
             return False
     with ThreadPoolExecutor(len(models) or 1) as pool:
         return {m for m, alive in zip(models, pool.map(ok, models)) if alive}
@@ -298,7 +298,7 @@ def answering(models, key, client, wait=90):
 def generate(kind, key, log=print, deadline=None):
     """Writes what is missing. With a deadline (time.time()), jobs not started by then are left for the next run."""
     todo = [j for j in jobs(kind) if not j[0].exists()]
-    client = httpx.Client(timeout=600)  # long legal documents need it; a busy model still times out eventually
+    client = httpx2.Client(timeout=600)  # long legal documents need it; a busy model still times out eventually
     models = sorted({j[1] for j in todo})
     alive = answering(models, key, client)
     if set(models) - alive:

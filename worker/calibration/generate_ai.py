@@ -15,7 +15,7 @@ import random
 import re
 import time
 
-import httpx
+import httpx2
 
 from calibration import data_dir
 from calibration.persuade import PROMPTS
@@ -56,7 +56,7 @@ def generate(dest=None, key=None, models=None, per_prompt=1, client=None, pause=
     prompts = json.loads((dest / PROMPTS).read_text(encoding="utf-8"))
     out = dest / "ai"
     out.mkdir(parents=True, exist_ok=True)
-    client = client or httpx.Client(timeout=180)
+    client = client or httpx2.Client(timeout=180)
     rng = random.Random(2026)
     written, dead = 0, set()
     for name in sorted(prompts):

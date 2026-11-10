@@ -204,7 +204,8 @@ fi
 pip_install -r "$APP/worker/requirements.txt"
 
 say "Building the app"
-(cd "$APP/web" && npm ci --no-audit --no-fund --loglevel=error && npm run build)
+# Build it, then remove the packages used only for building (TypeScript, Tailwind, eslint: about 330) are removed.
+(cd "$APP/web" && npm ci --no-audit --no-fund --loglevel=error && npm run build && npm prune --omit=dev --no-audit --no-fund --loglevel=error)
 # The database, before the app's first start: the app only reads it (0.1.1's launcher doesn't create it).
 "$VPY" "$APP/db/migrate.py"
 

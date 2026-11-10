@@ -18,7 +18,7 @@ import time
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "db"))
-import httpx  # noqa: E402
+import httpx2  # noqa: E402
 
 import migrate  # noqa: E402
 from ai import analyse  # noqa: E402
@@ -178,7 +178,7 @@ def similarity(conn, job, search, fetch, budget):
             continue
         try:
             page = fetch(url)
-        except (UnsafeUrl, httpx.HTTPError) as e:
+        except (UnsafeUrl, httpx2.HTTPError) as e:
             print(f"  skipped {url}: {e}")
             continue
         if page:
