@@ -24,6 +24,7 @@ import migrate  # noqa: E402
 from ai import analyse  # noqa: E402
 from align import align  # noqa: E402
 from extract import Rejected, read_file  # noqa: E402
+from references import Crossref, OpenAlex, lookup, split_references, title_of  # noqa: E402
 from rescore import rescore  # noqa: E402
 from search import BraveSearch, Fetcher, UnsafeUrl  # noqa: E402
 from text import bibliography_start, in_quote, normalize, pick_queries, quote_spans, words  # noqa: E402
@@ -36,6 +37,7 @@ IDLE_SECONDS = 2
 # to another program by now.
 HEARTBEAT_SECONDS = 15
 CACHE_DAYS = 30
+MIN_ABSTRACT_WORDS = 30  # shorter abstracts are a line of blurb, not text worth aligning against
 
 
 def load_env(path):
@@ -152,9 +154,11 @@ def extract(conn, job):
         conn.execute("update jobs set status = 'done' where id = ?", (job["id"],))
 
 
-def similarity(conn, job, search, fetch, budget):
+def similarity(conn, job, search, fetch, budget, references=None):
     """Search the web for the draft's phrases, fetch what comes back, align, write the raw matches,
-    then rescore. Every network call happens before the one write transaction opens."""
+    then rescore. The reference list is not searched on the web: each entry's title is looked up with
+    `references` (title -> work or None) instead, and a found work's abstract is aligned like a page.
+    Every network call happens before the one write transaction opens."""
     report_id = job["report_id"]
     text, spans, bib = conn.execute(
         "select d.text, d.quote_spans, d.bibliography_start"
@@ -163,18 +167,22 @@ def similarity(conn, job, search, fetch, budget):
     with tx(conn):
         conn.execute("update similarity_reports set status = 'processing', error = null where id = ?", (report_id,))
 
-    queries = pick_queries(text, budget)
+    # The web searches come from the body: reference entries are short, split at every initial, and
+    # are looked up by title below instead.
+    queries = pick_queries(text if bib is None else text[:bib], budget)
     urls = []
     for query in queries:
         urls += [url for url in search(query) if url not in urls]
 
-    pages = []  # (url, cached source id or None, title, text)
-    for url in urls:
-        cached = conn.execute(
+    def cached(url):
+        return conn.execute(
             f"select id, title, text from sources where url = ? and fetched_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-{CACHE_DAYS} days')",
             (url,)).fetchone()
-        if cached:
-            pages.append((url, *cached))
+
+    pages = []  # (type, url, cached source id or None, title, text)
+    for url in urls:
+        if hit := cached(url):
+            pages.append(("internet", url, *hit))
             continue
         try:
             page = fetch(url)
@@ -182,22 +190,37 @@ def similarity(conn, job, search, fetch, budget):
             print(f"  skipped {url}: {e}")
             continue
         if page:
-            pages.append((url, None, *page))
+            pages.append(("internet", url, None, *page))
 
-    found = {i: m for i, page in enumerate(pages) if (m := align(text, page[3]))}
+    checks = []  # (start, end, title, status, found title, found url, found year)
+    for start, end in (split_references(text, bib) if references else []):
+        title = title_of(text[start:end])
+        work = references(title) if title else None
+        status = "found" if work else ("not_found" if title else "no_title")
+        checks.append((start, end, title, status, *((work["title"], work["url"], work["year"]) if work else (None, None, None))))
+        if work and work["url"] and len(work["abstract"].split()) >= MIN_ABSTRACT_WORDS and work["url"] not in urls:
+            urls.append(work["url"])
+            hit = cached(work["url"])
+            pages.append(("publication", work["url"], *(hit or (None, work["title"], normalize(work["abstract"])))))
+
+    found = {i: m for i, page in enumerate(pages) if (m := align(text, page[4]))}
 
     with tx(conn):
         conn.execute("delete from matches where report_id = ?", (report_id,))
         conn.execute("delete from report_sources where report_id = ?", (report_id,))
+        conn.execute("delete from reference_checks where report_id = ?", (report_id,))
+        conn.executemany(
+            'insert into reference_checks (report_id, start, "end", title, status, found_title, found_url, found_year)'
+            " values (?, ?, ?, ?, ?, ?, ?, ?)", [(report_id, *c) for c in checks])
         source_ids = {}
-        for i, (url, source_id, title, page_text) in enumerate(pages):
+        for i, (kind, url, source_id, title, page_text) in enumerate(pages):
             if source_id is None:
                 digest = hashlib.sha256(page_text.encode("utf-8")).hexdigest()
                 source_id = conn.execute(f"""
-                    insert into sources (type, url, title, text, text_hash) values ('internet', ?, ?, ?, ?)
+                    insert into sources (type, url, title, text, text_hash) values (?, ?, ?, ?, ?)
                     on conflict (url) where url is not null do update
                        set title = excluded.title, text = excluded.text, text_hash = excluded.text_hash, fetched_at = {NOW}
-                    returning id""", (url, title, page_text, digest)).fetchall()[0][0]
+                    returning id""", (kind, url, title, page_text, digest)).fetchall()[0][0]
             source_ids[i] = source_id
         for i, ms in found.items():
             conn.execute("insert into report_sources (report_id, source_id) values (?, ?)", (report_id, source_ids[i]))
@@ -230,7 +253,13 @@ def similarity_from_env(conn, job):
     key = brave_key()
     if _web.get("key") != key:
         _web.update(key=key, search=BraveSearch(key), fetch=Fetcher(contact=os.environ.get("UA_CONTACT", "")).fetch)
-    similarity(conn, job, _web["search"], _web["fetch"], int(os.environ.get("SEARCH_QUERY_BUDGET") or 40))
+    if "references" not in _web:
+        client = httpx2.Client(timeout=20)
+        catalogues = [OpenAlex(client), Crossref(client)]
+        # REFERENCE_LOOKUP=off: the reference list's titles are not sent anywhere (README, Privacy).
+        _web["references"] = None if os.environ.get("REFERENCE_LOOKUP") == "off" else (lambda title: lookup(title, catalogues))
+    similarity(conn, job, _web["search"], _web["fetch"], int(os.environ.get("SEARCH_QUERY_BUDGET") or 40),
+               references=_web["references"])
 
 
 def ai_job(conn, job, scorer, threshold, model):

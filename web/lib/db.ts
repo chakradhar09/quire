@@ -7,7 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 import type { LayoutBlock } from "./report.ts";
 import { MIME, checkUpload, extensionOf, fileName, titleError } from "./upload.ts";
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 const FIX = "Run: python db/migrate.py (from the project root)";
 
@@ -233,6 +233,13 @@ export type ReportView = {
   sources: ReportSource[];
   matches: ReportMatch[];
   spans: { id: string; start: number; end: number; rank: number; label: string }[];
+  references: ReferenceCheck[];
+};
+
+// One entry of the reference list as the similarity check read it (worker/references.py).
+export type ReferenceCheck = {
+  start: number; end: number; title: string | null; status: "found" | "not_found" | "no_title";
+  foundTitle: string | null; foundUrl: string | null; foundYear: number | null;
 };
 
 const CONTEXT = 150; // characters of source text shown on each side of a match
@@ -288,8 +295,13 @@ export function getReport(id: number, conn: DatabaseSync = db()): ReportView | n
       ({ ...m, excluded: excluded === 1, source: [before, hit, after] as [string, string, string] }));
 
   const hostOf = new Map(sources.map((s) => [s.sourceId, s.host]));
+  const references = (conn.prepare(`
+    select start, "end", title, status, found_title as foundTitle, found_url as foundUrl, found_year as foundYear
+      from reference_checks where report_id = ? order by start`).all(id) as unknown as ReferenceCheck[])
+    .map((r) => ({ ...r })); // node:sqlite rows have a null prototype, which a client component can't take
   return {
     ...head,
+    references,
     settings: { excludeQuotes: excludeQuotes === 1, excludeBibliography: excludeBibliography === 1, smallMatchWords },
     sources,
     matches,

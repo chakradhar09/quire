@@ -11,6 +11,7 @@ Quire reads your paper the way a plagiarism checker would. It finds the sentence
 It is for checking **your own** work before you hand it in, for students and writers who don't have access to a paid checker. There is no account and no server: everything runs on your PC except the web searches.
 
 - **Similarity check.** Phrases from your draft are searched on the web (Brave Search). Pages sharing eight or more words in a row become sources, each with a colour, a rank and its share of your text. Open a match and see your sentence beside the source's.
+- **Reference check.** Each entry of your reference list is looked up by title in [OpenAlex](https://openalex.org) and [Crossref](https://www.crossref.org), two free catalogues of published research. The report's **References** tab shows which were found and links to them; one not found may be mistyped or may not exist (small journals, books and reports are often in neither). Your text is also compared with the abstracts of the works you cite.
 - **AI-writing estimate.** A classifier on your PC scores each passage of prose and marks the ones that read as machine-written, with the model's measured error rates beside the number.
 - **A report you work through.** Every flagged passage is a line on the list; handling it strikes it through instead of deleting it, so you can see what you decided and undo it.
 - **Versions.** Upload a new draft of the same paper and Quire keeps them together, showing how the scores changed.
@@ -119,7 +120,7 @@ It asks before removing anything, and asks whether to keep your drafts, reports 
 
 ## Privacy and safety
 
-- **What leaves your PC:** the short phrases sent to Brave Search for the similarity check, the pages it then fetches, and each time Quire starts a request to GitHub for the latest release number (`QUIRE_UPDATE_CHECK=off` in the environment turns that off). Your files never leave. (Next.js, which Quire is built on, sends anonymous usage reports by default; Quire's scripts switch them off.)
+- **What leaves your PC:** the short phrases sent to Brave Search for the similarity check, the pages it then fetches, the titles in your reference list (sent to OpenAlex and Crossref; `REFERENCE_LOOKUP=off` in `app/worker/.env` turns that off), and each time Quire starts a request to GitHub for the latest release number (`QUIRE_UPDATE_CHECK=off` in the environment turns that off). Your files never leave. (Next.js, which Quire is built on, sends anonymous usage reports by default; Quire's scripts switch them off.)
 - **Where your work lives:** the `data` folder inside the install: uploads, extracted text, reports and the database. Delete it, or [uninstall](#uninstall) without keeping your data, to remove everything.
 - **Quire has no login and must never be exposed to a network.** It only answers on `127.0.0.1`; don't put it behind a proxy or open its port to other machines.
 

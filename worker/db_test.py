@@ -21,7 +21,7 @@ from text import words  # noqa: E402
 from extract_test import make_pdf  # noqa: E402
 
 TABLES = ["ai_reports", "documents", "figures", "fingerprints", "integrity_flags", "jobs",
-          "matches", "report_sources", "resolutions", "similarity_reports", "sources"]
+          "matches", "reference_checks", "report_sources", "resolutions", "similarity_reports", "sources"]
 # The newest migration's number, read from the folder so a new migration does not break these tests.
 NEWEST = max(int(f.name[:3]) for f in migrate.MIGRATIONS.glob("*.sql"))
 
@@ -397,6 +397,57 @@ class SimilarityJobTest(TempDatabase):
         main.similarity(self.conn, main.claim(self.conn, ["similarity"]), search=search, fetch=fetch, budget=1)
         flags = self.conn.execute("select in_quote, in_bibliography from matches order by doc_start").fetchall()
         self.assertEqual(flags, [(1, 0), (0, 1)])
+
+    def checked_draft(self):
+        intro = "I chose coastal forests for this essay because my family lives close to a large estuary in the south. "
+        draft = (intro + COPIED + "\nReferences\n"
+                 "[1] Tomlinson, P. B. (2016). The botany of mangroves. Cambridge University Press.\n"
+                 "[2] Nobody, A. (2021). A study that no catalogue has ever heard of at all. Nowhere Press.\n"
+                 "[3] Smith 2019\n")
+        doc = self.add_document(text=draft)
+        self.conn.execute("insert into jobs (kind, document_id) values ('extract', ?)", (doc,))
+        self.assertTrue(main.run(self.conn, main.claim(self.conn, ["extract"])))
+        return draft, main.claim(self.conn, ["similarity"])
+
+    def test_the_web_searches_leave_the_reference_list_out(self):
+        _, job = self.checked_draft()
+        search, fetch, calls = self.fakes([])
+        main.similarity(self.conn, job, search=search, fetch=fetch, budget=10)
+        self.assertTrue(calls["search"])
+        self.assertFalse([q for q in calls["search"] if "Tomlinson" in q or "catalogue" in q])
+
+    def test_each_reference_is_looked_up_and_a_found_abstract_is_aligned_like_a_page(self):
+        draft, job = self.checked_draft()
+        search, fetch, _ = self.fakes([])
+        asked = []
+
+        def references(title):
+            asked.append(title)
+            if title == "The botany of mangroves":
+                return {"title": "The Botany of Mangroves", "url": "https://doi.org/10.1017/x", "year": 2016,
+                        "abstract": "This book introduces the subject. " + COPIED}
+            return None
+        main.similarity(self.conn, job, search=search, fetch=fetch, budget=3, references=references)
+
+        self.assertEqual(asked, ["The botany of mangroves", "A study that no catalogue has ever heard of at all"])
+        checks = self.conn.execute(
+            'select substr(?, start + 1, "end" - start), title, status, found_title, found_url, found_year'
+            " from reference_checks order by start", (draft,)).fetchall()
+        self.assertEqual([c[2] for c in checks], ["found", "not_found", "no_title"])
+        self.assertTrue(checks[0][0].startswith("[1] Tomlinson"))
+        self.assertEqual(checks[0][3:], ("The Botany of Mangroves", "https://doi.org/10.1017/x", 2016))
+        self.assertIsNone(checks[2][1])
+        source = self.conn.execute(
+            "select s.type, s.title from report_sources rs join sources s on s.id = rs.source_id").fetchall()
+        self.assertEqual(source, [("publication", "The Botany of Mangroves")])
+        start = self.conn.execute("select min(doc_start) from matches").fetchone()[0]
+        self.assertEqual(start, draft.index(COPIED))
+
+    def test_without_a_lookup_no_reference_is_checked(self):
+        _, job = self.checked_draft()
+        search, fetch, _ = self.fakes([])
+        main.similarity(self.conn, job, search=search, fetch=fetch, budget=3)
+        self.assertEqual(self.conn.execute("select count(*) from reference_checks").fetchone()[0], 0)
 
     def test_the_rescore_job_gives_what_the_similarity_job_gave_for_the_same_settings(self):
         report, job = self.queue_check()

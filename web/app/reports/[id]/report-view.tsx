@@ -7,6 +7,7 @@ import { PanelTabs, Switch } from "@/components/overlays";
 import { matchVars } from "@/components/evidence";
 import { PadPane, type PadTick } from "@/components/pad-scrollbar";
 import { DocumentViewer, SourceCard, SplitCompare, type ViewerSpan } from "@/components/report";
+import { ReferenceList } from "@/components/reference-list";
 import { ResolveList } from "@/components/resolve-list";
 import { Button, TextField, cx } from "@/components/ui";
 import type { AiReportView, ReportMatch, ReportSettings, ReportView as Report, Resolution, ResolutionState } from "@/lib/db";
@@ -43,7 +44,7 @@ export function ReportView({ report, ai, resolutions, panel: initialPanel, match
     sim: initialLayers === undefined || initialLayers.split(",").includes("sim"),
     ai: aiUsable && (initialLayers === undefined || initialLayers.split(",").includes("ai")),
   });
-  const [panel, setPanel] = useState(initialPanel === "filters" || initialPanel === "sources" ? initialPanel : "resolve");
+  const [panel, setPanel] = useState(initialPanel === "filters" || initialPanel === "sources" || initialPanel === "references" ? initialPanel : "resolve");
   const [selectedId, setSelectedId] = useState<string | undefined>(initialMatch);
   const [activeKey, setActiveKey] = useState<string>();
   const [busy, setBusy] = useState<string>();
@@ -309,6 +310,8 @@ export function ReportView({ report, ai, resolutions, panel: initialPanel, match
                 onDecide={decideItem} onCompare={(item) => select(String(item.matchId))} />
             ) },
             { value: "sources", label: "Sources", content: sources },
+            ...(report.references.length ? [{ value: "references", label: "References",
+              content: <ReferenceList text={text} references={report.references} /> }] : []),
             { value: "filters", label: "Filters", content: <Filters key={JSON.stringify(report.settings)} reportId={report.id} saved={report.settings} /> },
           ]} />
         </aside>

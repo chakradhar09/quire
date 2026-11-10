@@ -120,10 +120,10 @@ export function PanelTabs({ tabs, value, onValueChange }: {
 }) {
   return (
     <RTabs.Root value={value} onValueChange={onValueChange} className="flex h-full flex-col">
-      <RTabs.List aria-label="Report panels" className="flex border-b border-border px-2">
+      <RTabs.List aria-label="Report panels" className="flex overflow-x-auto border-b border-border px-2">
         {tabs.map((t) => (
           <RTabs.Trigger key={t.value} value={t.value}
-            className="focus-ring -mb-px border-b-2 border-transparent px-3 py-3 text-sm font-semibold text-muted transition-colors hover:text-text data-[state=active]:border-accent data-[state=active]:text-text">
+            className="focus-ring -mb-px shrink-0 border-b-2 border-transparent px-2.5 py-3 text-sm font-semibold whitespace-nowrap text-muted transition-colors hover:text-text data-[state=active]:border-accent data-[state=active]:text-text">
             {t.label}
           </RTabs.Trigger>
         ))}
