@@ -97,17 +97,17 @@ The key is saved only on your PC (in the `data` folder), and the only thing sent
 
 ## Use
 
-Open **Quire** from the Start menu (or run `quire`). It starts in the background and opens in your browser at `http://127.0.0.1:3000`. Drop a file or paste your text on **Check a draft**; the check runs on its own and the report opens from **Drafts** when it is ready. Quire stops by itself a few minutes after you close its last tab; to stop it at once, use **Stop Quire now** on the Settings page, **Stop Quire** in the Start menu, or `quire --stop`.
+Open **Quire** from the Start menu (or run `quire`). It starts in the background and opens in your browser at `http://127.0.0.1:3000`. Drop a file or paste your text on **Check a draft**; the check runs on its own and the report opens from **Drafts** when it is ready. Quire stops by itself a few minutes after you close its last tab; to stop it at once, run `quire --stop` (on Windows, `scripts\quire.ps1 -Stop` in the install folder).
 
 ## Updates
 
-When a new release is out, an **Update** notice appears in Quire's header. Install it with **Update Quire** (or `quire-update`), or switch on **Install new releases automatically when Quire starts** on the Settings page. Your drafts and reports are kept.
+Each time Quire starts, it checks for a new release. When one is out, an **Update** notice appears in Quire's header and on the Settings page; click **Update to …** in either (on Windows it shows its progress in a window of its own, and Quire opens again when it is done). You can also run `quire-update`, or switch on **Install new releases automatically when Quire starts** on the Settings page. Your drafts and reports are kept.
 
-**Installed Quire on 3 November 2026 or earlier?** Run the [install line](#install) again, once. 0.1.0 couldn't finish installing, and its updater can't see newer releases (**Update Quire** says "model-v5" is the latest, or shows an error on Windows). The installer switches you to the newest release and keeps your drafts and settings; updates work normally after that.
+**Installed Quire on 3 November 2026 or earlier?** Run the [install line](#install) again, once. 0.1.0 couldn't finish installing, and its updater can't see newer releases (its updater says "model-v5" is the latest, or shows an error on Windows). The installer switches you to the newest release and keeps your drafts and settings; updates work normally after that.
 
 ## Uninstall
 
-**Windows:** **Uninstall Quire** in the Start menu (in the Quire folder), or **Settings > Apps > Quire > Uninstall**.
+**Windows:** **Uninstall Quire** on Quire's Settings page, or **Settings > Apps > Quire > Uninstall**.
 
 **macOS and Linux:** run `quire-uninstall`, or if that command isn't there:
 
@@ -119,7 +119,7 @@ It asks before removing anything, and asks whether to keep your drafts, reports 
 
 ## Privacy and safety
 
-- **What leaves your PC:** the short phrases sent to Brave Search for the similarity check, the pages it then fetches, and once a day a request to GitHub for the latest release number (`QUIRE_UPDATE_CHECK=off` in the environment turns that off). Your files never leave. (Next.js, which Quire is built on, sends anonymous usage reports by default; Quire's scripts switch them off.)
+- **What leaves your PC:** the short phrases sent to Brave Search for the similarity check, the pages it then fetches, and each time Quire starts a request to GitHub for the latest release number (`QUIRE_UPDATE_CHECK=off` in the environment turns that off). Your files never leave. (Next.js, which Quire is built on, sends anonymous usage reports by default; Quire's scripts switch them off.)
 - **Where your work lives:** the `data` folder inside the install: uploads, extracted text, reports and the database. Delete it, or [uninstall](#uninstall) without keeping your data, to remove everything.
 - **Quire has no login and must never be exposed to a network.** It only answers on `127.0.0.1`; don't put it behind a proxy or open its port to other machines.
 

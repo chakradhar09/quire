@@ -230,7 +230,7 @@ function Demo() {
             <QueueButton state="working" items={LONG_QUEUE} />
             <QueueButton state="stalled" items={DEMO_QUEUE.slice(0, 1)} />
             <QueueButton state="idle" items={[]} />
-            <UpdateNotice version="0.2.0" current="0.1.0" url="" autoUpdate={false} />
+            <UpdateNotice version="0.2.0" current="0.1.0" url="" autoUpdate={false} inWindow />
           </div>
         </Section>
 

@@ -1,21 +1,23 @@
 "use client";
 // The Settings page's parts: the Brave Search API key (saved by saveBraveKey; the page only ever holds its
-// last four characters), the switch for installing new releases when Quire starts, and stopping Quire.
+// last four characters), updates (the Update button only when a newer release is out, and the switch for installing
+// new releases when Quire starts), and uninstalling.
 import { useActionState, useState, useTransition } from "react";
 import { ExternalLink } from "lucide-react";
 import { Switch } from "@/components/overlays";
 import { Button, InlineAlert, TextField } from "@/components/ui";
-import { saveBraveKey, setAutoUpdate, stop } from "../actions";
+import { UpdateButton } from "@/components/update-button";
+import { runUninstall, saveBraveKey, setAutoUpdate } from "../actions";
 
-export function SettingsForms({ masked, keyElsewhere, autoUpdate, guideUrl }: {
-  masked: string; keyElsewhere: boolean; autoUpdate: boolean; guideUrl: string;
+export function SettingsForms({ masked, keyElsewhere, autoUpdate, update, inWindow, guideUrl }: {
+  masked: string; keyElsewhere: boolean; autoUpdate: boolean; update: string | null; inWindow: boolean; guideUrl: string;
 }) {
   const [state, action, pending] = useActionState(saveBraveKey, {} as { error?: string; saved?: boolean });
   const [auto, setAuto] = useState(autoUpdate);
   const [, startTransition] = useTransition();
   const [replacing, setReplacing] = useState(false);
-  const [stopping, startStopping] = useTransition();
-  const [stopped, setStopped] = useState(false);
+  const [opening, startOpening] = useTransition();
+  const [uninstall, setUninstall] = useState<{ error?: string; opened?: boolean }>({});
   const asking = !masked || replacing;
 
   return (
@@ -60,29 +62,38 @@ export function SettingsForms({ masked, keyElsewhere, autoUpdate, guideUrl }: {
 
       <section aria-labelledby="updates-heading" className="rounded-lg border border-border bg-bg p-5">
         <h2 id="updates-heading" className="text-lg">Updates</h2>
-        <p className="mt-1 text-sm text-muted">Once a day Quire asks GitHub whether a newer release is out and shows it in the header.</p>
+        <p className="mt-1 text-sm text-muted">
+          {update ? `Quire ${update} is out. Your drafts, reports and settings are kept.`
+            : "Each time Quire starts it asks GitHub whether a newer release is out, and shows it here and in the header."}
+        </p>
+        {update && <div className="mt-4"><UpdateButton version={update} inWindow={inWindow} /></div>}
         <div className="mt-2">
           <Switch id="settings-auto-update" label="Install new releases automatically when Quire starts"
             checked={auto} onCheckedChange={(v) => { setAuto(v); startTransition(() => setAutoUpdate(v)); }}
-            hint="Otherwise, use Update Quire from the Start menu (or quire-update) when you see the notice." />
+            hint="Otherwise, use the Update button when a new release is out." />
         </div>
       </section>
 
-      <section aria-labelledby="stop-heading" className="rounded-lg border border-border bg-bg p-5">
-        <h2 id="stop-heading" className="text-lg">Stop Quire</h2>
+      <section aria-labelledby="uninstall-heading" className="rounded-lg border border-border bg-bg p-5">
+        <h2 id="uninstall-heading" className="text-lg">Uninstall</h2>
         <p className="mt-1 text-sm text-muted">
-          Quire also stops by itself a few minutes after you close its last tab. A check that is running finishes first.
+          Removes Quire from this PC. It asks first, and asks whether to keep your drafts, reports and settings.
         </p>
-        <div className="mt-4">
-          {stopped ? (
-            <InlineAlert variant="success" title="Quire is stopped" live>
-              You can close this tab. To open it again, use Quire in the Start menu (or run quire).
+        <div className="mt-4 grid gap-3">
+          {uninstall.error && <InlineAlert variant="danger" title="The uninstaller didn't open" live>{uninstall.error}</InlineAlert>}
+          {!inWindow ? (
+            <p className="text-sm">Run <code className="font-mono">quire-uninstall</code> in a terminal.</p>
+          ) : uninstall.opened ? (
+            <InlineAlert variant="info" title="The uninstaller opened in a window of its own" live>
+              Answer its questions there. Quire closes once it starts removing.
             </InlineAlert>
           ) : (
-            <Button variant="secondary" loading={stopping}
-              onClick={() => startStopping(async () => { await stop(); setStopped(true); })}>
-              Stop Quire now
-            </Button>
+            <div>
+              <Button variant="secondary" loading={opening}
+                onClick={() => startOpening(async () => { const r = await runUninstall(); setUninstall(r.error ? r : { opened: true }); })}>
+                Uninstall Quire
+              </Button>
+            </div>
           )}
         </div>
       </section>

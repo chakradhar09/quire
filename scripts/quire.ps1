@@ -45,7 +45,10 @@ if ($Stop) {
 }
 
 New-Item -ItemType Directory -Force $Data | Out-Null
-$settings = Join-Path $Data "settings.json"
+# Updating and uninstalling moved to the Settings page; installs before 0.1.5 also had Start menu shortcuts for them.
+$menu = Join-Path ([Environment]::GetFolderPath("Programs")) "Quire"
+foreach ($old in "Stop Quire.lnk", "Update Quire.lnk", "Uninstall Quire.lnk") { Remove-Item (Join-Path $menu $old) -ErrorAction SilentlyContinue }
+$settings =Join-Path $Data "settings.json"
 if ((Test-Path $settings) -and ((Get-Content $settings -Raw) -match '"autoUpdate"\s*:\s*true') -and -not (App-Running)) {
   # A failed update must not keep Quire from opening; the next start tries again.
   try { & (Join-Path $PSScriptRoot "update.ps1") -Quiet } catch { Write-Host "Could not update Quire: $($_.Exception.Message)" }

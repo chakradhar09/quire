@@ -7,6 +7,7 @@ import { listDrafts, workerState } from "@/lib/db";
 import { currentStep, queueSteps, unfinished } from "@/lib/queue";
 import { readSettings } from "@/lib/settings";
 import { VERSION, availableUpdate } from "@/lib/updates";
+import { scriptsInWindow } from "@/lib/scripts";
 import { ensureWorker } from "@/lib/worker";
 import { QueueButton } from "./queue-button";
 import { UpdateNotice } from "./update-notice";
@@ -21,7 +22,8 @@ export async function WorkerLight() {
     .map((d) => ({ id: d.id, title: d.title, step: currentStep(d), waiting: d.waiting, steps: queueSteps(d) }));
   return (
     <>
-      {update && <UpdateNotice version={update.version} current={VERSION} url={update.url} autoUpdate={readSettings().autoUpdate} />}
+      {update && <UpdateNotice version={update.version} current={VERSION} url={update.url} autoUpdate={readSettings().autoUpdate}
+        inWindow={scriptsInWindow} />}
       <QueueButton state={state} items={items} />
     </>
   );

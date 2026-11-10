@@ -4,7 +4,7 @@
   Settings > Apps.
 
 .DESCRIPTION
-  From the Start menu (Quire > Uninstall Quire), Settings > Apps > Quire > Uninstall, or in PowerShell:
+  From Quire's Settings page (Uninstall Quire), Settings > Apps > Quire > Uninstall, or in PowerShell:
     irm https://raw.githubusercontent.com/chakradhar09/quire/main/scripts/uninstall.ps1 | iex
 
   It first asks whether to keep your drafts, reports and settings (app\data); kept, they move to
@@ -15,7 +15,7 @@
 .PARAMETER KeepData Keep your drafts, reports and settings without asking.
 .PARAMETER DeleteData Delete them without asking.
 .PARAMETER Yes      Don't ask anything (your data is kept unless -DeleteData).
-.PARAMETER Pause    Wait for Enter before closing (the Start menu and Settings > Apps run it in a new window).
+.PARAMETER Pause    Wait for Enter before closing (Quire's Settings page and Settings > Apps run it in a new window).
 #>
 param([string]$Dir, [switch]$KeepData, [switch]$DeleteData, [switch]$Yes, [switch]$Pause)
 $ErrorActionPreference = "Stop"

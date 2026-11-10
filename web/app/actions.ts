@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { paperFromField } from "@/lib/upload";
 import { braveKeyError, writeSettings } from "@/lib/settings";
-import { stopQuire } from "@/lib/alive";
+import { runScript } from "@/lib/scripts";
 import { redirect } from "next/navigation";
 import {
   deleteDocument, moveToPaper, retryReport, setMatchExcluded, setResolution, setSourceExcluded, submitText, updateReportSettings, type ReportSettings,
@@ -40,9 +40,14 @@ export async function saveBraveKey(_prev: { error?: string; saved?: boolean }, f
   return { saved: true };
 }
 
-// The Settings page's Stop button: the app and the worker, now.
-export async function stop() {
-  stopQuire({ worker: true });
+// The Update and Uninstall buttons: the script stops Quire itself (and the updater starts it again).
+// Returns the problem, if any.
+export async function runUpdate() {
+  try { runScript("update"); return {}; } catch (e) { return { error: String((e as Error).message) }; }
+}
+
+export async function runUninstall() {
+  try { runScript("uninstall"); return {}; } catch (e) { return { error: String((e as Error).message) }; }
 }
 
 export async function deleteDraft(id: number) {

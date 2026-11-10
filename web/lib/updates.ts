@@ -1,5 +1,5 @@
-// Telling you when a newer Quire is out. Once a day the server asks GitHub for the latest release of REPO and
-// compares its tag with this copy's version; QUIRE_UPDATE_CHECK=off turns the check off (it is the only request
+// Telling you when a newer Quire is out. Each time Quire starts, the server asks GitHub once for the latest release
+// of REPO (the answer is kept until it stops) and compares its tag with this copy's version; QUIRE_UPDATE_CHECK=off turns the check off (it is the only request
 // Quire makes that is not a similarity search). Applying an update is the launcher's job (scripts/update.*),
 // which also runs it on start when the autoUpdate setting is on (lib/settings.ts).
 import fs from "node:fs";
@@ -24,18 +24,24 @@ export function newer(candidate: string, current: string) {
 
 export type Update = { version: string; url: string };
 
-export async function availableUpdate(): Promise<Update | null> {
-  if (process.env.QUIRE_UPDATE_CHECK === "off") return null;
+const kept = globalThis as { quireUpdate?: Promise<Update | null> };
+
+export function availableUpdate(): Promise<Update | null> {
+  if (process.env.QUIRE_UPDATE_CHECK === "off") return Promise.resolve(null);
+  return (kept.quireUpdate ??= latestRelease());
+}
+
+async function latestRelease(): Promise<Update | null> {
   try {
     const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
       headers: { accept: "application/vnd.github+json" },
-      next: { revalidate: 86_400 }, // once a day, however often pages render
+      cache: "no-store", // kept in memory instead, so a restart asks again
       signal: AbortSignal.timeout(5000),
     });
     if (!r.ok) return null;
     const release = (await r.json()) as { tag_name?: string; html_url?: string };
     return release.tag_name && newer(release.tag_name, VERSION) ? { version: release.tag_name.replace(/^v/, ""), url: release.html_url ?? "" } : null;
   } catch {
-    return null; // offline, rate-limited or no releases yet: say nothing
+    return null; // offline, rate-limited or no releases yet: say nothing until the next start
   }
 }

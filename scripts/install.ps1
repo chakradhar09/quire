@@ -8,8 +8,8 @@
 
   It needs Git, Node.js 22.13 or later and Python 3.11 or 3.12, and says how to get any that are missing.
   Everything goes into one folder (default %LOCALAPPDATA%\Quire): the code in app\, your drafts and the
-  database in app\data\. Run it again to repair an install; use "Update Quire" to update and "Uninstall Quire"
-  (or Settings > Apps) to remove it.
+  database in app\data\. Run it again to repair an install. Update and uninstall it from Quire's Settings page
+  (Settings > Apps can uninstall it too).
 
 .PARAMETER Dir         Where to install (default %LOCALAPPDATA%\Quire).
 .PARAMETER Source      Git URL or local folder to install from (default the GitHub repository).
@@ -217,7 +217,7 @@ Pip-Install @("-r", (Join-Path $App "worker\requirements.txt"))
 # ---------------------------------------------------------------- The app (Node)
 Say "Building the app"
 Push-Location (Join-Path $App "web")
-# Build it, then remove the packages used only for building (TypeScript, Tailwind, eslint: about 330) are removed.
+# Build it, then remove the packages used only for building (TypeScript, Tailwind, eslint: about 330).
 try { Run npm @("ci", "--no-audit", "--no-fund", "--loglevel=error"); Run npm @("run", "build"); Run npm @("prune", "--omit=dev", "--no-audit", "--no-fund", "--loglevel=error") } finally { Pop-Location }
 # The database, before the app's first start: the app only reads it (0.1.1's launcher doesn't create it).
 Run $py @((Join-Path $App "db\migrate.py"))
@@ -306,12 +306,10 @@ if (-not $NoShortcuts) {
   $icon = Join-Path $App "scripts\quire.ico"
   $links = @(
     @{ Path = (Join-Path $menu "Quire.lnk"); Script = "quire.ps1"; Args = ""; Note = "Open Quire" },
-    @{ Path = (Join-Path $menu "Stop Quire.lnk"); Script = "quire.ps1"; Args = " -Stop"; Note = "Stop Quire running in the background" },
-    @{ Path = (Join-Path $menu "Update Quire.lnk"); Script = "update.ps1"; Args = ""; Note = "Install the latest release of Quire" },
-    @{ Path = (Join-Path $menu "Uninstall Quire.lnk"); Script = "uninstall.ps1"; Args = " -Pause"; Note = "Remove Quire from this PC" },
     @{ Path = (Join-Path ([Environment]::GetFolderPath("Desktop")) "Quire.lnk"); Script = "quire.ps1"; Args = ""; Note = "Open Quire" }
   )
-  # This installer comes from main; a release older than uninstall.ps1 gets no Uninstall shortcut.
+  # Updating and uninstalling are on Quire's Settings page; earlier installs also had shortcuts for them.
+  foreach ($old in "Stop Quire.lnk", "Update Quire.lnk", "Uninstall Quire.lnk") { Remove-Item (Join-Path $menu $old) -ErrorAction SilentlyContinue }
   foreach ($l in $links | Where-Object { Test-Path (Join-Path $App "scripts\$($_.Script)") }) {
     $s = $shell.CreateShortcut($l.Path)
     $s.TargetPath = $ps
@@ -344,5 +342,5 @@ if (Test-Path (Join-Path $App "scripts\uninstall.ps1")) {
 }
 
 Say "Quire is installed. Open it from the Start menu, or run: $(Join-Path $App 'scripts\quire.ps1')"
-if (Test-Path $key) { Write-Host "  To remove it: Uninstall Quire in the Start menu, or Settings > Apps." }
+if (Test-Path $key) { Write-Host "  To update or remove it: Quire's Settings page, or Settings > Apps to remove it." }
 if (-not $Yes -and (Ask "  Open Quire now? [Y/n]" "y") -match "^[yY]") { & (Join-Path $App "scripts\quire.ps1") }
