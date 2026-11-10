@@ -33,8 +33,8 @@ export function SettingsForms({ masked, keyElsewhere, autoUpdate, update, inWind
         </p>
 
         <div className="mt-4 grid gap-3">
-          {state.error && <InlineAlert variant="danger" title="The key was not saved" live>{state.error}</InlineAlert>}
-          {state.saved && !state.error && <InlineAlert variant="success" title="Saved" live>The next check uses it.</InlineAlert>}
+          {state.error ? <InlineAlert variant="danger" title="The key was not saved" live>{state.error}</InlineAlert> : null}
+          {state.saved && !state.error ? <InlineAlert variant="success" title="Saved" live>The next check uses it.</InlineAlert> : null}
           {keyElsewhere && !masked && (
             <InlineAlert variant="info" title="A key is set in worker/.env">Quire uses it. Paste one here to use that instead.</InlineAlert>
           )}
@@ -45,7 +45,7 @@ export function SettingsForms({ masked, keyElsewhere, autoUpdate, update, inWind
                 spellCheck={false} placeholder="BSA…" hint="Stays on this PC. Only the searches themselves go to Brave." />
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" loading={pending}>Save key</Button>
-                {masked && <Button variant="ghost" onClick={() => setReplacing(false)}>Cancel</Button>}
+                {masked ? <Button variant="ghost" onClick={() => setReplacing(false)}>Cancel</Button> : null}
               </div>
             </form>
           ) : (
@@ -63,36 +63,48 @@ export function SettingsForms({ masked, keyElsewhere, autoUpdate, update, inWind
       <section aria-labelledby="updates-heading" className="rounded-lg border border-border bg-bg p-5">
         <h2 id="updates-heading" className="text-lg">Updates</h2>
         <p className="mt-1 text-sm text-muted">
-          {update ? `Quire ${update} is out. Your drafts, reports and settings are kept.`
-            : "Each time Quire starts it asks GitHub whether a newer release is out, and shows it here and in the header."}
+          Each time Quire starts it asks GitHub whether a newer release is out, and shows it here and in the header.
         </p>
-        {update && <div className="mt-4"><UpdateButton version={update} inWindow={inWindow} /></div>}
+        {/* The setting first, so it stays put; the update row appears under it only while a release is waiting. */}
         <div className="mt-2">
           <Switch id="settings-auto-update" label="Install new releases automatically when Quire starts"
             checked={auto} onCheckedChange={(v) => { setAuto(v); startTransition(() => setAutoUpdate(v)); }}
             hint="Otherwise, use the Update button when a new release is out." />
+          {update ? (
+            <div className="border-b border-border py-3">
+              <UpdateButton version={update} inWindow={inWindow} lead={
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Quire {update} is out</p>
+                  <p className="text-xs text-muted">Your drafts, reports and settings are kept.</p>
+                </div>} />
+            </div>
+          ) : null}
         </div>
       </section>
 
       <section aria-labelledby="uninstall-heading" className="rounded-lg border border-border bg-bg p-5">
         <h2 id="uninstall-heading" className="text-lg">Uninstall</h2>
-        <p className="mt-1 text-sm text-muted">
-          Removes Quire from this PC. It asks first, and asks whether to keep your drafts, reports and settings.
-        </p>
-        <div className="mt-4 grid gap-3">
-          {uninstall.error && <InlineAlert variant="danger" title="The uninstaller didn't open" live>{uninstall.error}</InlineAlert>}
-          {!inWindow ? (
-            <p className="text-sm">Run <code className="font-mono">quire-uninstall</code> in a terminal.</p>
-          ) : uninstall.opened ? (
+        <p className="mt-1 text-sm text-muted">Removes Quire, its shortcuts and its entry in the list of apps.</p>
+        <div className="mt-2 grid gap-3 border-b border-border py-3">
+          {uninstall.error ? <InlineAlert variant="danger" title="The uninstaller didn't open" live>{uninstall.error}</InlineAlert> : null}
+          {uninstall.opened ? (
             <InlineAlert variant="info" title="The uninstaller opened in a window of its own" live>
               Answer its questions there. Quire closes once it starts removing.
             </InlineAlert>
           ) : (
-            <div>
-              <Button variant="secondary" loading={opening}
-                onClick={() => startOpening(async () => { const r = await runUninstall(); setUninstall(r.error ? r : { opened: true }); })}>
-                Uninstall Quire
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Uninstall Quire from this PC</p>
+                <p className="text-xs text-muted">It asks first, and asks whether to keep your drafts, reports and settings.</p>
+              </div>
+              {inWindow ? (
+                <Button variant="secondary" size="sm" loading={opening}
+                  onClick={() => startOpening(async () => { const r = await runUninstall(); setUninstall(r.error ? r : { opened: true }); })}>
+                  Uninstall
+                </Button>
+              ) : (
+                <p className="text-sm">Run <code className="font-mono">quire-uninstall</code> in a terminal</p>
+              )}
             </div>
           )}
         </div>

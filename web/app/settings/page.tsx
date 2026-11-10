@@ -25,7 +25,7 @@ async function Forms() {
 export default function SettingsPage() {
   return (
     <>
-      <AppHeader current="settings" status={<Suspense><WorkerLight /></Suspense>} />
+      <AppHeader current="settings" status={<Suspense><WorkerLight updates={false} /></Suspense>} />
       <main id="main" className="mx-auto w-full max-w-2xl px-4 py-8 md:px-8">
         <h1 className="text-xl">Settings</h1>
         <p className="mt-1 mb-8 text-sm text-muted">Saved on this PC, in the data folder next to your drafts. Quire {VERSION}.</p>

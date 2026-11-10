@@ -1,11 +1,12 @@
 "use client";
 // A newer Quire is out: a pill in the header that opens a dialog with the versions, a link to what changed, the
-// Update button, and the switch for updating automatically when Quire starts (the launcher reads data/settings.json).
+// switch for updating automatically when Quire starts (the launcher reads data/settings.json), and Later / Update.
 import { useState, useTransition } from "react";
 import { Dialog } from "radix-ui";
 import { ArrowUpCircle, X } from "lucide-react";
 import { setAutoUpdate } from "@/app/actions";
 import { Switch } from "./overlays";
+import { Button } from "./ui";
 import { UpdateButton } from "./update-button";
 
 export function UpdateNotice({ version, current, url, autoUpdate, inWindow }: {
@@ -28,15 +29,18 @@ export function UpdateNotice({ version, current, url, autoUpdate, inWindow }: {
             <Dialog.Close aria-label="Close" className="focus-ring rounded-sm text-muted hover:text-text"><X aria-hidden className="size-5" /></Dialog.Close>
           </div>
           <Dialog.Description className="mt-1 text-sm text-muted">
-            You have {current}. {url && <a href={url} target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2">See what changed</a>}
+            You have {current}. {url ? <a href={url} target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2">See what changed</a> : null}
           </Dialog.Description>
           <p className="mt-4 text-sm">
             {auto ? "It installs the next time Quire starts, or you can update now. " : ""}Your drafts and reports stay where they are.
           </p>
-          <div className="mt-4"><UpdateButton version={version} inWindow={inWindow} /></div>
           <div className="mt-4">
             <Switch id="auto-update" label="Update automatically when Quire starts" checked={auto} onCheckedChange={toggle}
               hint="Quire checks GitHub for a new release each time it starts either way." />
+          </div>
+          <div className="mt-6">
+            <UpdateButton version={version} inWindow={inWindow}
+              later={<Dialog.Close asChild><Button variant="secondary">Later</Button></Dialog.Close>} />
           </div>
         </Dialog.Content>
       </Dialog.Portal>

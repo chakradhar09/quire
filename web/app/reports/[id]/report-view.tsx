@@ -1,7 +1,7 @@
 "use client";
 // S07 body: the paper and its side panel. Sources (S08, with S10 compare and S12 Excluded) and
 // Filters (S11). The open tab and the selected match live in the URL (?panel=, ?match=).
-import { useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import { ArrowLeft } from "lucide-react";
 import { PanelTabs, Switch } from "@/components/overlays";
 import { matchVars } from "@/components/evidence";
@@ -144,28 +144,26 @@ export function ReportView({ report, ai, resolutions, panel: initialPanel, match
   };
 
   // Keyboard: j and k move through the list; c, r, e, p and z decide about the active passage.
-  const keys = useRef<(e: KeyboardEvent) => void>(() => {});
-  useEffect(() => {
-    keys.current = (e) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
-      if ((e.target as HTMLElement).closest("input, textarea, select, [contenteditable], [role=dialog], [role=menu]")) return;
-      const k = e.key.toLowerCase();
-      if (k === "j" || k === "k") {
-        const key = step(items, activeKey, k === "j" ? 1 : -1);
-        const item = items.find((i) => i.key === key);
-        if (item) { e.preventDefault(); focusItem(item); }
-        return;
-      }
-      const item = items.find((i) => i.key === activeKey);
-      const d = item && decide(k, item.kind);
-      if (!item || d === undefined) return;
-      if (d === null ? item.state === "open" : item.state === "excluded") return;
-      e.preventDefault();
-      decideItem(item, d);
-    };
+  // An Effect Event: it sees the latest items and active passage without re-adding the listener.
+  const onKey = useEffectEvent((e: KeyboardEvent) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
+    if (e.target instanceof Element && e.target.closest("input, textarea, select, [contenteditable], [role=dialog], [role=menu]")) return;
+    const k = e.key.toLowerCase();
+    if (k === "j" || k === "k") {
+      const key = step(items, activeKey, k === "j" ? 1 : -1);
+      const item = items.find((i) => i.key === key);
+      if (item) { e.preventDefault(); focusItem(item); }
+      return;
+    }
+    const item = items.find((i) => i.key === activeKey);
+    const d = item && decide(k, item.kind);
+    if (!item || d === undefined) return;
+    if (d === null ? item.state === "open" : item.state === "excluded") return;
+    e.preventDefault();
+    decideItem(item, d);
   });
   useEffect(() => {
-    const on = (e: KeyboardEvent) => keys.current(e);
+    const on = (e: KeyboardEvent) => onKey(e);
     window.addEventListener("keydown", on);
     return () => window.removeEventListener("keydown", on);
   }, []);

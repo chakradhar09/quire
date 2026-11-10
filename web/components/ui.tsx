@@ -301,7 +301,7 @@ export function AppHeader({ current, intake, status, autohide }: {
           {process.env.NODE_ENV !== "production" && link("design", "/design", "Design")}
           {link("settings", "/settings", "Settings")}
         </nav>
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-2 sm:gap-4">
           {status}
           {current !== "submit" && !intake && (
             <Link href="/submit" className={cx(buttonClass("shell", "sm"), "max-sm:hidden")}>Check a draft</Link>
